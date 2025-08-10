@@ -646,6 +646,44 @@ $eqLogics = eqLogic::byType($plugin->getId());
 
             <div role="tabpanel" class="tab-pane" id="configureTraitement">
                 <br/>
+                <form class="form-horizontal">
+                    <legend>
+                        {{Paramètres de traitement}}
+                    </legend>
+
+                    <div class='form-group'>
+                        <fieldset>
+                            <label class="col-sm-2 control-label">{{Délai filtration avant traitement}}</label>
+                            <div class="col-sm-2">
+                                <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="delaisBeforeTreatment" title="{{Temps de filtration avant demarrage electrolyseur}}"/>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <div class='form-group'>
+                        <fieldset>
+                            <label class="col-sm-2 control-label">{{Délai filtration aprés fin de traitement}}</label>
+                            <div class="col-sm-2">
+                                <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="delaisAfterTreatment" title="{{Temps de filtration aprés fin de traitement}}"/>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- coucher du soleil -->
+                    <div class="form-group">
+                        <fieldset>
+                            <label class="col-sm-2 control-label">{{Heure de couché du soleil}}</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="coucher_soleil" data-concat="1"/>
+                            </div>
+                            <div class="col-sm-1">
+                                <a class="btn btn-default btn-sm listCmdInfo"><i class="fa fa-list-alt"></i></a>
+                            </div>
+                        </fieldset>
+                   
+                    <br/>
+                    </div>
+                </form>
                 <!-- traitementOn -->
                 <form class="form-horizontal">
                     <fieldset>
