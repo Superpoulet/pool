@@ -403,15 +403,15 @@ class pool extends eqLogic
                     || $this->getCmd(null, 'marcheForcee')->execCmd() == 1
                 ) {
                     $this->filtrationOn();
-
-                    // if (
-                    //     $this->getCmd(null, 'filtrationTemperature')->execCmd() == 1
-                    //     || $this->getCmd(null, 'marcheForcee')->execCmd() == 1
-                    //     || ($this->getCmd(null, 'filtrationHivernage')->execCmd() == 1 && $this->getConfiguration('traitement_hivernage', '0') == '1')
-                    // ) {
-                    //     sleep(2);
-                    //     $this->traitementOn();
-                    // }
+// WIP
+                    if (
+                        ($this->getCmd(null, 'filtrationTemperature')->execCmd() == 1
+                        || $this->getCmd(null, 'marcheForcee')->execCmd() == 1
+                        || ($this->getCmd(null, 'filtrationHivernage')->execCmd() == 1 && $this->getConfiguration('traitement_hivernage', '0') == '1')) && $this->getCmd(null, 'traitementTemperature')->execCmd() == 1
+                    ) {
+                        sleep(2);
+                        $this->traitementOn();
+                    }
 
                     if ($this->getCmd(null, 'filtrationSurpresseur')->execCmd() == 1) {
                         sleep(2);
@@ -451,7 +451,9 @@ class pool extends eqLogic
             $this->filtrationStop();
             $this->chauffageStop();
         }
-
+        if ($this->getCmd(null, 'traitementTemperature')->execCmd() == 0){
+            $this->traitementStop();
+        }
         // log::add('pool', 'debug', $this->getHumanName() . 'activatingDevices() end');
     }
 
@@ -652,11 +654,11 @@ class pool extends eqLogic
         }
         if ($temperature_water >= 20 && $temperature_water < 30)
         {
-            $dureeTRT = 6.00;  
+            $dureeTRT = 7.00;  
         }
         if ($temperature_water >= 30)
         {
-            $dureeTRT = 7.00; 
+            $dureeTRT = 8.00; 
         }
         $hh = floor($dureeTRT);
         $mm = floor(($dureeTRT * 60) - ($hh * 60));
@@ -691,7 +693,7 @@ class pool extends eqLogic
         }
         $dureeTraitement = $this->caculateTimeTreatment($temperatureCalcul);
         // log::add('pool', 'debug', $this->getHumanName() . '$dureeTraitement=' . $dureeTraitement);
-        $dureeTraitementSecondes = ($dureeTraitement + 1 ) * 3600;
+        $dureeTraitementSecondes = $dureeTraitement * 3600;
         list($filtrationSecondes, $filtrationTime) = $this->processingTime($dureeHeures);
 
         if ($this->getConfiguration('Activate_HCHP', '0') == '1') {
@@ -1010,9 +1012,11 @@ class pool extends eqLogic
     public function calculateStatusFiltration($temperature_water)
     {
         // log::add('pool', 'debug', $this->getHumanName() . 'calculateStatusFiltration() begin');
-
+        if($this->getCmd(null, 'traitementTemperature')->execCmd() == null) {
+            $this->getCmd(null, 'traitementTemperature')->event('0');           
+        }
         $filtrationTemperature = 0;
-        $traitement = 0;
+        $traitementTemperature = 0;
 
 
         $filtrationDebut = $this->getCmd(null, 'filtrationDebut')->execCmd();
@@ -1024,9 +1028,9 @@ class pool extends eqLogic
         $filtrationFin = $this->getCmd(null, 'filtrationFin')->execCmd();
         // log::add('pool', 'debug', $this->getHumanName() . '$filtrationFin=' . date("d-m-Y H:i", $filtrationFin));
         $traitementDebut = $this->getCmd(null, 'traitementDebut')->execCmd();
-        // log::add('pool', 'debug', $this->getHumanName() . '$traitementDebut=' . date("d-m-Y H:i", $traitementDebut));
+        //log::add('pool', 'debug', $this->getHumanName() . '$traitementDebut=' . date("d-m-Y H:i", $traitementDebut));
         $traitementFin = $this->getCmd(null, 'traitementFin')->execCmd();
-        // log::add('pool', 'debug', $this->getHumanName() . '$traitementFin=' . date("d-m-Y H:i", $traitementFin));
+        //log::add('pool', 'debug', $this->getHumanName() . '$traitementFin=' . date("d-m-Y H:i", $traitementFin));
 
         $timeNow = time();
         // log::add('pool', 'debug', $this->getHumanName() . '$timeNow=' . date("d-m-Y H:i", $timeNow));
@@ -1064,8 +1068,9 @@ class pool extends eqLogic
                     $filtrationTemperature = 1;
 
                     if ($timeNow >= $traitementDebut && $timeNow <= $traitementFin) {
+                        log::add('pool', 'debug', $this->getHumanName() . 'activation du traitement');
                         // active le traitement
-                        $traitement = 1;                
+                        $traitementTemperature = 1;                
                     }                    
                 }
 
@@ -1171,16 +1176,18 @@ class pool extends eqLogic
                 $this->getCmd(null, 'temperature_display')->event($temperature_water);
             }
         }
+       
 
-        if($this->getCmd(null, 'traitement')->execCmd() != $traitement) {
-            $this->getCmd(null, 'traitement')->event($traitement);
-            if ($traitement == 1) {
-                log::add('pool', 'debug', $this->getHumanName() . 'allumons le traitement');
-                $this->traitementOn();
-            } else {
-                log::add('pool', 'debug', $this->getHumanName() . 'eteignons le traitement');
-                $this->traitementStop();
-            }
+        if($this->getCmd(null, 'traitementTemperature')->execCmd() != $traitementTemperature) {
+            log::add('pool', 'debug', $this->getHumanName() . 'passage dans la condition');
+            $this->getCmd(null, 'traitementTemperature')->event($traitementTemperature);
+            // if ($traitementTemperature == 1) {
+            //     log::add('pool', 'debug', $this->getHumanName() . 'allumons le traitement');
+            //     //$this->traitementOn();
+            // } else {
+            //     log::add('pool', 'debug', $this->getHumanName() . 'eteignons le traitement');
+            //     //$this->traitementStop();
+            // }
         }
 
 
@@ -2688,7 +2695,7 @@ class pool extends eqLogic
 
         if ($this->getConfiguration('temperatureHysteresis') == '') {
             $this->setConfiguration('temperatureHysteresis', '0.5');
-        }
+        } 
 
         // log::add('pool', 'debug', $this->getHumanName() . 'preSave() end');
     }
@@ -3486,6 +3493,23 @@ class pool extends eqLogic
                 $filtrationDebut->setOrder($order++);
                 $filtrationDebut->setIsHistorized(0);
                 $filtrationDebut->save();
+            }
+
+            // traitementTemperature
+            {
+                $traitementTemperature = $this->getCmd(null, 'traitementTemperature');
+                if (!is_object($traitementTemperature)) {
+                    $traitementTemperature = new poolCmd();
+                }
+                $traitementTemperature->setEqLogic_id($this->getId());
+                $traitementTemperature->setName('traitementTemperature');
+                $traitementTemperature->setType('info');
+                $traitementTemperature->setSubType('numeric');
+                $traitementTemperature->setLogicalId('traitementTemperature');
+                $traitementTemperature->setIsVisible(0);
+                $traitementTemperature->setOrder($order++);
+                $traitementTemperature->setIsHistorized(0);
+                $traitementTemperature->save();
             }
 
             // filtrationFin
