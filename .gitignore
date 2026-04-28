@@ -4,3 +4,6 @@
 
 # Visual Studio cache/options directory
 .vs
+
+# Claude Code
+.claude
