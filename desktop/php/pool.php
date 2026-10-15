@@ -202,20 +202,6 @@ $eqLogics = eqLogic::byType($plugin->getId());
 
                 <form class="form-horizontal">
                     <fieldset>
-                        <!-- alert-info -->
-                        <div class="alert alert-info">
-                            {{Veuillez ajouter votre sonde de température}}
-                        </div>
-                        <!-- temperature_water -->
-                        <div class="form-group">
-                            <label class="col-sm-2 control-label">{{Température de l'eau}}</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="temperature_water" data-concat="1"/>
-                            </div>
-                            <div class="col-sm-1">
-                                <a class="btn btn-default btn-sm listCmdInfo"><i class="fa fa-list-alt"></i></a>
-                            </div>
-                        </div>
                         <!-- temperature_water_min / temperature_water_max -->
                         <div class="form-group">
                             <label class="col-sm-2 control-label">{{Borne de température inférieure}}</label>
@@ -235,6 +221,89 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             </div>
                             <div class="col-sm-1">
                                 <a class="btn btn-default btn-sm listCmdInfo"><i class="fa fa-list-alt"></i></a>
+                            </div>
+                        </div>
+                    </fieldset>
+                </form>
+
+                <form class="form-horizontal">
+                    <fieldset>
+                        <legend>{{Capteurs externes (API REST)}}</legend>
+                        <div class="alert alert-info">
+                            {{Le plugin appelle l'URL configurée selon la fréquence cron et enregistre la valeur retournée par l'API (format JSON : {"value": 28.5}).}}
+                        </div>
+                        <!-- Température eau -->
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">{{URL trigger température}}</label>
+                            <div class="col-sm-6">
+                                <input type="text" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="temp_trigger_url" placeholder="http://mon-api/sensor/temperature"/>
+                            </div>
+                            <label class="col-sm-1 control-label">{{Cron}}</label>
+                            <div class="col-sm-2">
+                                <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="temp_trigger_cron" placeholder="*/5 * * * *" title="{{Fréquence de rafraîchissement (ex: */5 * * * * = toutes les 5 min)}}"/>
+                            </div>
+                            <div class="col-sm-1">
+                                <i class="fa fa-question-circle cursor floatright" id="bt_cronGenerator_temp"></i>
+                            </div>
+                        </div>
+                        <!-- pH -->
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">{{URL trigger pH}}</label>
+                            <div class="col-sm-6">
+                                <input type="text" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="ph_trigger_url" placeholder="http://mon-api/sensor/ph"/>
+                            </div>
+                            <label class="col-sm-1 control-label">{{Cron}}</label>
+                            <div class="col-sm-2">
+                                <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="ph_trigger_cron" placeholder="*/10 * * * *" title="{{Fréquence de rafraîchissement (ex: */10 * * * * = toutes les 10 min)}}"/>
+                            </div>
+                            <div class="col-sm-1">
+                                <i class="fa fa-question-circle cursor floatright" id="bt_cronGenerator_ph"></i>
+                            </div>
+                        </div>
+                        <!-- ORP -->
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">{{ORP}}</label>
+                            <div class="col-sm-2">
+                                <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="cfgOrp">
+                                    <option value="disabled">{{Inactif}}</option>
+                                    <option value="enabled">{{Actif}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="cfgOrp enabled">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">{{URL trigger ORP}}</label>
+                                <div class="col-sm-6">
+                                    <input type="text" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="orp_trigger_url" placeholder="http://mon-api/sensor/orp"/>
+                                </div>
+                                <label class="col-sm-1 control-label">{{Cron}}</label>
+                                <div class="col-sm-2">
+                                    <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="orp_trigger_cron" placeholder="*/10 * * * *" title="{{Fréquence de rafraîchissement (ex: */10 * * * * = toutes les 10 min)}}"/>
+                                </div>
+                                <div class="col-sm-1">
+                                    <i class="fa fa-question-circle cursor floatright" id="bt_cronGenerator_orp"></i>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">{{ORP déclenchement (mV)}}</label>
+                                <div class="col-sm-2">
+                                    <input type="number" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="orp_start" placeholder="650" title="{{Le traitement démarre si l'ORP descend sous cette valeur.}}"/>
+                                </div>
+                                <label class="col-sm-2 control-label">{{ORP arrêt (mV)}}</label>
+                                <div class="col-sm-2">
+                                    <input type="number" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="orp_stop" placeholder="700" title="{{Le traitement s'arrête dès que l'ORP atteint cette valeur.}}"/>
+                                </div>
+                                <label class="col-sm-2 control-label">{{Heure limite hors plage}}</label>
+                                <div class="col-sm-1">
+                                    <input type="number" min="0" max="23" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="orp_heure_limite" placeholder="Aucune" title="{{Heure max (0-23) au-delà de laquelle le traitement ORP hors plage ne se déclenche plus. Laisser vide pour déclencher dès que les conditions ORP sont réunies, sans limite horaire.}}"/>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Timeout requêtes capteurs -->
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">{{Timeout requêtes capteurs (s)}}</label>
+                            <div class="col-sm-2">
+                                <input type="number" min="1" max="60" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="sensor_timeout" placeholder="15" title="{{Délai max d'attente (secondes) pour la réponse des capteurs température / pH / ORP. Défaut : 15 s.}}"/>
                             </div>
                         </div>
                     </fieldset>
@@ -261,6 +330,24 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                             <option value="1">{{Courbe}}</option>
                                             <option value="2">{{Temp / 2}}</option>
                                         </select>
+                                    </div>
+                                </div>
+                                <!-- forcageTemperatureEnabled -->
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Filtration forcée si eau chaude}}</label>
+                                    <div class="col-sm-4">
+                                        <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="forcageTemperatureEnabled" placeholder="">
+                                            <option value="1">{{Activé}}</option>
+                                            <option value="0">{{Désactivé}}</option>
+                                        </select>
+                                        <span class="help-block">{{Au-dessus du seuil, la filtration tourne en continu (hors plages), évalué sur la température courante quelle que soit la méthode de calcul.}}</span>
+                                    </div>
+                                </div>
+                                <!-- forcageTemperatureSeuil -->
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">{{Seuil de température forcée (°C)}}</label>
+                                    <div class="col-sm-4">
+                                        <input type="number" step="0.5" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="forcageTemperatureSeuil" placeholder="30">
                                     </div>
                                 </div>
                                 <!-- coefficientAjustement -->
@@ -378,6 +465,22 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                         </select>
                                     </div>
                                 </div>
+                                    <!-- recalcHoraireEnabled -->
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">{{Réajuster la plage en cours de journée}}
+                                            <sup><i class="fas fa-question-circle tooltips" title="{{Recalcule la plage du jour à intervalle régulier pendant la filtration : prolonge la fin si la température maxi relevée a augmenté. Évite une plage sous-dimensionnée calculée la nuit sur la température de la veille. Mode normal (horaire pivot) uniquement.}}"></i></sup>
+                                        </label>
+                                        <div class="col-sm-4">
+                                            <input type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="recalcHoraireEnabled"/>
+                                        </div>
+                                    </div>
+                                    <!-- recalcHoraireFrequence -->
+                                    <div class="form-group">
+                                        <label class="col-sm-4 control-label">{{Fréquence de réajustement (minutes)}}</label>
+                                        <div class="col-sm-4">
+                                            <input type="number" min="5" step="5" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="recalcHoraireFrequence" placeholder="60"/>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="heureCreuse">
                                     <!-- Debut HC Journée -->
@@ -617,6 +720,33 @@ $eqLogics = eqLogic::byType($plugin->getId());
                         <div id="div_asservissement"></div>
                     </fieldset>
                 </form>
+                <br/>
+                <!-- boostDuree -->
+                <form class="form-horizontal">
+                    <fieldset>
+                        <legend>{{Mode boost}}</legend>
+                        <div class="form-group">
+                            <label class="col-sm-4 control-label">{{Durée du boost avant coupure automatique (heures)}}
+                                <sup><i class="fas fa-question-circle tooltips" title="{{Durée par défaut du mode boost avant retour automatique à la normale. Choisir « Illimité » pour désactiver la coupure auto. Cette valeur peut être surchargée à chaque activation depuis le widget.}}"></i></sup>
+                            </label>
+                            <div class="col-sm-4">
+                                <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="boostDuree" placeholder="">
+                                    <option value="0">{{Illimité}}</option>
+                                    <option value="0.5">00:30</option>
+                                    <option value="1">01:00</option>
+                                    <option value="1.5">01:30</option>
+                                    <option value="2">02:00</option>
+                                    <option value="3">03:00</option>
+                                    <option value="4">04:00</option>
+                                    <option value="6">06:00</option>
+                                    <option value="8">08:00</option>
+                                    <option value="12">12:00</option>
+                                    <option value="24">24:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+                </form>
             </div>
 
             <div role="tabpanel" class="tab-pane" id="configureChauffage">
@@ -653,6 +783,40 @@ $eqLogics = eqLogic::byType($plugin->getId());
 
                     <div class='form-group'>
                         <fieldset>
+                            <label class="col-sm-2 control-label">{{Heure de début du traitement}}</label>
+                            <div class="col-sm-2">
+                                <select class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="traitementHeureDebut" title="{{Heure fixe à laquelle démarre le cycle de traitement chaque jour}}">
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                    <option value="13:00">13:00</option>
+                                    <option value="14:00">14:00</option>
+                                    <option value="15:00">15:00</option>
+                                    <option value="16:00">16:00</option>
+                                    <option value="17:00">17:00</option>
+                                    <option value="18:00">18:00</option>
+                                    <option value="19:00">19:00</option>
+                                    <option value="20:00">20:00</option>
+                                    <option value="21:00">21:00</option>
+                                    <option value="22:00">22:00</option>
+                                    <option value="23:00">23:00</option>
+                                </select>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <div class='form-group'>
+                        <fieldset>
                             <label class="col-sm-2 control-label">{{Délai filtration avant traitement}}</label>
                             <div class="col-sm-2">
                                 <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="delaisBeforeTreatment" title="{{Temps de filtration avant demarrage electrolyseur}}"/>
@@ -672,7 +836,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
                     <!-- coucher du soleil -->
                     <div class="form-group">
                         <fieldset>
-                            <label class="col-sm-2 control-label">{{Heure de couché du soleil}}</label>
+                            <label class="col-sm-2 control-label">{{Heure de coucher du soleil}}</label>
                             <div class="col-sm-9">
                                 <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="coucher_soleil" data-concat="1"/>
                             </div>
@@ -680,9 +844,131 @@ $eqLogics = eqLogic::byType($plugin->getId());
                                 <a class="btn btn-default btn-sm listCmdInfo"><i class="fa fa-list-alt"></i></a>
                             </div>
                         </fieldset>
-                   
                     <br/>
                     </div>
+                    <div class="alert alert-info">
+                        {{Parametrer le temps de traitement en fonction de la temperature de l'eau.}}
+                    </div>
+
+                    <div class="form-group">
+                        <!-- datePivot -->
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">{{0 a 10°}}</label>
+                            <div class="col-sm-2">
+                                <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="trt0to10" placeholder="">
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <!-- datePivot -->
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">{{10 a 20°}}</label>
+                            <div class="col-sm-2">
+                                <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="trt10to20" placeholder="">
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <!-- datePivot -->
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">{{20 a 30°}}</label>
+                            <div class="col-sm-2">
+                                <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="trt20to30" placeholder="">
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <!-- datePivot -->
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">{{30° et plus}}</label>
+                            <div class="col-sm-2">
+                                <select class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="trt30" placeholder="">
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <legend>{{Contrôle production de chlore (électrolyseur)}}</legend>
+                    <div class="alert alert-info">
+                        {{Vérifie que l'électrolyseur produit réellement (consommation électrique) lorsque le traitement est actif. Laisser la commande vide pour désactiver ce contrôle.}}
+                    </div>
+                    <!-- electrolyseur_puissance -->
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">{{Commande puissance électrolyseur (W)}}</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="electrolyseur_puissance" data-concat="1" title="{{Commande info renvoyant la consommation électrique de l'électrolyseur en watts}}"/>
+                        </div>
+                        <div class="col-sm-1">
+                            <a class="btn btn-default btn-sm listCmdInfo"><i class="fa fa-list-alt"></i></a>
+                        </div>
+                    </div>
+                    <!-- electrolyseur_seuil / electrolyseur_grace -->
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">{{Seuil de production (W)}}</label>
+                        <div class="col-sm-2">
+                            <input type="number" min="0" step="1" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="electrolyseur_seuil" placeholder="5" title="{{En dessous de cette puissance, on considère que l'électrolyseur ne produit pas de chlore.}}"/>
+                        </div>
+                        <label class="col-sm-2 control-label">{{Délai d'amorçage avant contrôle (min)}}</label>
+                        <div class="col-sm-2">
+                            <input type="number" min="0" max="60" step="1" class="eqLogicAttr form-control tooltips" data-l1key="configuration" data-l2key="electrolyseur_grace" placeholder="5" title="{{Délai après le démarrage du traitement avant de signaler un défaut de production (temps d'amorçage de l'électrolyseur).}}"/>
+                        </div>
+                    </div>
+
                 </form>
                 <!-- traitementOn -->
                 <form class="form-horizontal">
@@ -703,6 +989,17 @@ $eqLogics = eqLogic::byType($plugin->getId());
                             <a class="btn btn-default btn-xs pull-right addAction" data-type="traitementStop" style="position: relative; top : 5px;"><i class="fa fa-plus-circle"></i> {{Ajouter une action}}</a>
                         </legend>
                         <div id="div_traitementStop"></div>
+                    </fieldset>
+                </form>
+                <br/>
+                <!-- chloreDefautOn -->
+                <form class="form-horizontal">
+                    <fieldset>
+                        <legend>
+                            {{En cas de défaut de production de chlore je dois ?}}
+                            <a class="btn btn-default btn-xs pull-right addAction" data-type="chloreDefautOn" style="position: relative; top : 5px;"><i class="fa fa-plus-circle"></i> {{Ajouter une action}}</a>
+                        </legend>
+                        <div id="div_chloreDefautOn"></div>
                     </fieldset>
                 </form>
             </div>

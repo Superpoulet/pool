@@ -124,6 +124,18 @@ class pool extends eqLogic
 
                 // log::add('pool', 'debug', $pool->getHumanName());
 
+                // Coupure automatique du mode boost après la durée définie (0 = illimité)
+                $boostCmd = $pool->getCmd(null, 'boost');
+                if (is_object($boostCmd) && $boostCmd->execCmd() == 1) {
+                    $boostFinCmd = $pool->getCmd(null, 'boostFin');
+                    if (is_object($boostFinCmd)) {
+                        $boostFin = (int)$boostFinCmd->execCmd();
+                        if ($boostFin > 0 && time() >= $boostFin) {
+                            $pool->executeBoostOff();
+                        }
+                    }
+                }
+
                 if ($pool->getCmd(null, 'filtrationSurpresseur')->execCmd() == 1) {
                     $timeFin = $pool->getCmd(null, 'filtrationTempsRestant')->execCmd();
                     $timeRestant = $timeFin - time();
@@ -185,6 +197,11 @@ class pool extends eqLogic
         if (!is_object($cron)) {
             throw new Exception(__('Tache cron introuvable', __FILE__));
         }
+        if ($cron->getDeamon() != 1 || $cron->getTimeout() < 1440) {
+            $cron->setDeamon(1);
+            $cron->setTimeout('1440');
+            $cron->save();
+        }
         $cron->run();
     }
 
@@ -207,6 +224,9 @@ class pool extends eqLogic
                 // log::add('pool', 'debug', $pool->getHumanName());
 
                 ///////////////////////////////////////////////////////////////////////////////////
+
+                // Trigger capteurs externes (fréquence configurable par capteur)
+                $pool->triggerSensors();
 
                 $temperature_water = $pool->getTemperatureWater();
                 $temperature_outdoor = $pool->getTemperatureOutdoor();
@@ -237,6 +257,9 @@ class pool extends eqLogic
 
 
                 ///////////////////////////////////////////////////////////////////////////////////
+
+                // Bascule filtration forcée sur la température LIVE (instantanée, toutes méthodes)
+                $pool->evaluateForcedFiltrationByTemperature($temperature_water);
 
                 if ($pool->getHivernage()) {
                     $pool->calculateStatusFiltrationHivernage($temperature_water, $temperature_outdoor, $lever_soleil);
@@ -329,6 +352,19 @@ class pool extends eqLogic
     {
         // log::add('pool', 'debug', $this->getHumanName() . 'activatingDevices() begin');
 
+        // Arrêt total : priorité absolue, stopper tout et sortir immédiatement
+        if ($this->getCmd(null, 'arretTotal')->execCmd() == 1) {
+            $status = __('Inactif', __FILE__);
+            $status = $this->getStatusHivernage($status);
+            $this->getCmd(null, 'asservissementStatus')->event($status);
+            $this->traitementStop();
+            $this->surpresseurStop();
+            $this->filtrationStop();
+            $this->chauffageStop();
+            $this->updateWidgetData();
+            return;
+        }
+
         // log::add('pool', 'debug', $this->getHumanName() . 'FiltrationLavage=' . $this->getCmd(null, 'filtrationLavage')->execCmd());
         // log::add('pool', 'debug', $this->getHumanName() . 'FiltrationLavageEtat=' . $this->getCmd(null, 'filtrationLavageEtat')->execCmd());
         // log::add('pool', 'debug', $this->getHumanName() . 'FiltrationTemperature=' . $this->getCmd(null, 'filtrationTemperature')->execCmd());
@@ -350,7 +386,8 @@ class pool extends eqLogic
                     $bFound = true;
                 }
                 // Pas de commande on remet la cmd 'arretTotal' à zero
-                if ($bFound == false) {
+                // Guard : ne reset que s'il y a des commandes externes configurées (évite d'écraser le mode Inactif interne)
+                if ($bFound == false && !empty($arretTotals)) {
                     // log::add('pool', 'debug', $this->getHumanName() . '$this->getCmd(null, \'arretTotal\')->event(0)');
                     $this->getCmd(null, 'arretTotal')->event(0);
                 }
@@ -363,7 +400,8 @@ class pool extends eqLogic
                     $bFound = true;
                 }
                 // Pas de commande on remet la cmd 'marcheForcee' à zero
-                if ($bFound == false) {
+                // Guard : ne reset que s'il y a des commandes externes configurées
+                if ($bFound == false && !empty($marcheForcees)) {
                     // log::add('pool', 'debug', $this->getHumanName() . '$this->getCmd(null, \'marcheForcee\')->event(0);');
                     $this->getCmd(null, 'marcheForcee')->event(0);
                 }
@@ -401,13 +439,18 @@ class pool extends eqLogic
                     || $this->getCmd(null, 'filtrationHivernage')->execCmd() == 1
                     || $this->getCmd(null, 'filtrationSurpresseur')->execCmd() == 1
                     || $this->getCmd(null, 'marcheForcee')->execCmd() == 1
+                    || $this->getCmd(null, 'filtrationChoc')->execCmd() == 1
                 ) {
                     $this->filtrationOn();
-// WIP
+
                     if (
-                        ($this->getCmd(null, 'filtrationTemperature')->execCmd() == 1
-                        || $this->getCmd(null, 'marcheForcee')->execCmd() == 1
-                        || ($this->getCmd(null, 'filtrationHivernage')->execCmd() == 1 && $this->getConfiguration('traitement_hivernage', '0') == '1')) && $this->getCmd(null, 'traitementTemperature')->execCmd() == 1
+                        (is_object($this->getCmd(null, 'boost')) && $this->getCmd(null, 'boost')->execCmd() == 1)
+                        || (
+                            ($this->getCmd(null, 'filtrationTemperature')->execCmd() == 1
+                            || $this->getCmd(null, 'marcheForcee')->execCmd() == 1
+                            || ($this->getCmd(null, 'filtrationHivernage')->execCmd() == 1 && $this->getConfiguration('traitement_hivernage', '0') == '1'))
+                            && $this->getCmd(null, 'traitementTemperature')->execCmd() == 1
+                        )
                     ) {
                         sleep(2);
                         $this->traitementOn();
@@ -451,10 +494,180 @@ class pool extends eqLogic
             $this->filtrationStop();
             $this->chauffageStop();
         }
-        if ($this->getCmd(null, 'traitementTemperature')->execCmd() == 0){
+        if ($this->getCmd(null, 'traitementTemperature')->execCmd() == 0
+            && !(is_object($this->getCmd(null, 'boost')) && $this->getCmd(null, 'boost')->execCmd() == 1)) {
             $this->traitementStop();
         }
+
+        $this->checkChloreProduction();
+
+        $this->updateWidgetData();
+
         // log::add('pool', 'debug', $this->getHumanName() . 'activatingDevices() end');
+    }
+
+    public function updateWidgetData()
+    {
+        $cmd = $this->getCmd('info', 'poolWidgetData');
+        if (!is_object($cmd)) {
+            return;
+        }
+
+        // 'info' obligatoire : certains logicalId existent en doublon (action + info)
+        // sans le type, getCmd peut retourner l'action et execCmd() la déclencherait
+        $cmdGet = function ($logicalId) {
+            $c = $this->getCmd('info', $logicalId);
+            return is_object($c) ? $c->execCmd() : null;
+        };
+        $cmdId = function ($logicalId) {
+            $c = $this->getCmd('action', $logicalId);
+            return is_object($c) ? $c->getId() : null;
+        };
+
+        $data = array(
+            'temp'                 => $this->getTemperatureWater(),
+            'tempMax'              => $cmdGet('temperatureMaxi'),
+            'tempOutdoor'          => $this->getTemperatureOutdoor(),
+            'filtration'           => (int) $cmdGet('filtration'),
+            'filtrationChoc'       => (int) $cmdGet('filtrationChoc'),
+            'boost'                => (int) $cmdGet('boost'),
+            'boostFin'             => (int) $cmdGet('boostFin'),
+            'boostDuree'           => $this->getConfiguration('boostDuree', '2'),
+            'ph'                   => $cmdGet('ph'),
+            'orp'                  => $cmdGet('orp'),
+            'chauffage'            => (int) $cmdGet('chauffage'),
+            'traitement'           => (int) $cmdGet('traitement'),
+            'surpresseur'          => (int) $cmdGet('surpresseur'),
+            'hivernage'            => (int) $cmdGet('hivernage'),
+            'marcheForcee'         => (int) $cmdGet('marcheForcee'),
+            'arretTotal'           => (int) $cmdGet('arretTotal'),
+            'asservissementStatus' => $cmdGet('asservissementStatus'),
+            'hasChauffage'         => $this->getConfiguration('cfgChauffage') == 'enabled',
+            'hasSurpresseur'       => $this->getConfiguration('cfgSurpresseur') == 'enabled',
+            'hasTraitement'        => $this->getConfiguration('cfgTraitement') == 'enabled',
+            'hasChloreCheck'       => $this->getConfiguration('cfgTraitement') == 'enabled' && !empty($this->getConfiguration('electrolyseur_puissance')),
+            'productionChlore'     => (!empty($this->getConfiguration('electrolyseur_puissance'))) ? (int) $cmdGet('productionChlore') : null,
+            'lavageEtat'           => (int) $cmdGet('filtrationLavageEtat'),
+            'lavageStatus'         => $cmdGet('filtreSableLavageStatus'),
+            'lavageTimestamp'      => (int) $cmdGet('filtrationTempsRestant'),
+            'filtrationTime'       => $cmdGet('filtrationTime'),
+            'treatmentTime'        => $this->getConfiguration('cfgTraitement') == 'enabled' ? $cmdGet('treatmentTime') : null,
+            'filtrationSchedule'   => $cmdGet('filtrationSchedule'),
+            'traitementSchedule'   => ($this->getConfiguration('cfgTraitement') == 'enabled' && (int)$cmdGet('traitementDebut') > 0)
+                ? date('H:i', (int)$cmdGet('traitementDebut')) . ' → ' . date('H:i', (int)$cmdGet('traitementFin'))
+                : null,
+            'actions'              => array(
+                'chocFilterOn'           => $cmdId('chocFilterOn'),
+                'chocFilterOff'          => $cmdId('chocFilterOff'),
+                'boostOn'                => $cmdId('boostOn'),
+                'boostOff'               => $cmdId('boostOff'),
+                'surpresseurOn'          => $this->getConfiguration('cfgSurpresseur') == 'enabled' ? $cmdId('surpresseurOn') : null,
+                'filtreSableLavageOn'    => $this->getConfiguration('cfgFiltreSable') == 'enabled' ? $cmdId('filtreSableLavageOn') : null,
+                'poolStop'               => $this->getConfiguration('cfgSurpresseur') == 'enabled' ? $cmdId('poolStop') : null,
+                'resetCalcul'            => $cmdId('resetCalcul'),
+                'asservissementActif'    => $cmdId('asservissementActif'),
+                'asservissementAuto'     => $cmdId('asservissementAuto'),
+                'asservissementInactif'  => $cmdId('asservissementInactif'),
+                'phUpdate'               => !empty($this->getConfiguration('ph_trigger_url')) ? $cmdId('phUpdate') : null,
+                'orpUpdate'              => !empty($this->getConfiguration('orp_trigger_url')) ? $cmdId('orpUpdate') : null,
+            ),
+        );
+
+        $cmd->event(json_encode($data));
+    }
+
+    public function triggerSensors()
+    {
+        foreach (['temp', 'ph', 'orp'] as $type) {
+            // La mesure ORP est volontairement découplée de cfgOrp : « inactif » signifie seulement
+            // que l'ORP n'est pas pris en compte dans la gestion du traitement (cf. calculateStatusFiltration),
+            // mais on continue d'historiser la mesure si l'URL + le cron sont configurés.
+            // La sonde de température est dans le circuit : mesure valable uniquement si la filtration est en route
+            if ($type === 'temp') {
+                $cmdFiltration = $this->getCmd(null, 'filtration');
+                if (!is_object($cmdFiltration) || (int)$cmdFiltration->execCmd() !== 1) {
+                    log::add('pool', 'debug', $this->getHumanName() . ' triggerSensors(temp) : filtration arrêtée, mesure ignorée');
+                    continue;
+                }
+            }
+            $url     = $this->getConfiguration($type . '_trigger_url');
+            $cronStr = $this->getConfiguration($type . '_trigger_cron');
+            if (empty($url) || empty($cronStr)) {
+                continue;
+            }
+            try {
+                $c = new Cron\CronExpression($cronStr, new Cron\FieldFactory);
+                if (!$c->isDue()) {
+                    continue;
+                }
+            } catch (Exception $e) {
+                log::add('pool', 'warning', $this->getHumanName() . ' triggerSensors(' . $type . ') cron invalide : ' . $e->getMessage());
+                continue;
+            }
+
+            $this->measureSensor($type);
+        }
+    }
+
+    /**
+     * Effectue la mesure d'un capteur (requête HTTP) et enregistre la valeur sur la commande info.
+     * Ne tient pas compte du cron — appelée par triggerSensors() (après contrôle cron)
+     * et par le déclenchement manuel via les commandes action phUpdate / orpUpdate.
+     *
+     * @param string $type 'temp' | 'ph' | 'orp'
+     * @return bool true si une valeur a bien été enregistrée
+     */
+    public function measureSensor($type)
+    {
+        $url = $this->getConfiguration($type . '_trigger_url');
+        if (empty($url)) {
+            log::add('pool', 'warning', $this->getHumanName() . ' measureSensor(' . $type . ') : URL non configurée');
+            return false;
+        }
+
+        // Résolution du cmd_id cible
+        $cmd   = ($type === 'temp') ? $this->getCmd(null, 'temperature') : $this->getCmd('info', $type);
+        $cmdId = is_object($cmd) ? $cmd->getId() : null;
+        if (!$cmdId) {
+            log::add('pool', 'warning', $this->getHumanName() . ' measureSensor(' . $type . ') : cmd_id introuvable');
+            return false;
+        }
+
+        log::add('pool', 'debug', $this->getHumanName() . ' measureSensor(' . $type . ') → ' . $url);
+        $timeout = (int) $this->getConfiguration('sensor_timeout', 15);
+        if ($timeout < 1 || $timeout > 60) {
+            $timeout = 15;
+        }
+        $context = stream_context_create(['http' => ['timeout' => $timeout, 'ignore_errors' => true]]);
+        $result  = @file_get_contents($url, false, $context);
+        if ($result === false) {
+            log::add('pool', 'warning', $this->getHumanName() . ' measureSensor(' . $type . ') : échec requête ' . $url);
+            return false;
+        }
+        $json = json_decode($result, true);
+        if (!isset($json['value'])) {
+            log::add('pool', 'warning', $this->getHumanName() . ' measureSensor(' . $type . ') : réponse invalide → ' . $result);
+            return false;
+        }
+        $targetCmd = cmd::byId($cmdId);
+        if (!is_object($targetCmd)) {
+            log::add('pool', 'warning', $this->getHumanName() . ' measureSensor(' . $type . ') : commande #' . $cmdId . ' introuvable');
+            return false;
+        }
+        $targetCmd->event($json['value']);
+        log::add('pool', 'debug', $this->getHumanName() . ' measureSensor(' . $type . ') : valeur=' . $json['value'] . ' enregistrée sur cmd #' . $cmdId);
+
+        if ($type === 'temp') {
+            $displayCmd = $this->getCmd(null, 'temperature_display');
+            if (is_object($displayCmd)) {
+                $displayCmd->event($json['value']);
+            }
+            $maxiCmd = $this->getCmd(null, 'temperatureMaxi');
+            if (is_object($maxiCmd) && (float)$json['value'] > (float)$maxiCmd->execCmd()) {
+                $maxiCmd->event($json['value']);
+            }
+        }
+        return true;
     }
 
     public function processingTime($dureeHeures)
@@ -606,24 +819,11 @@ class pool extends eqLogic
 
     public function calculateTimeFiltrationWithTemperatureReducedByHalf($temperature_water)
     {
-        // Calcul simplifié
-        // log::add('pool', 'debug', $this->getHumanName() . 'config disable marche forcée : ' . $this->getConfiguration("disable_marcheForcee") . '');
-
-        // si la temperature de l'eau est >= a 30, on passe la filtration en marche forcée sinon on repasse en mode auto
-        if ($temperature_water >= 30) {
-            if ($this->getConfiguration("disable_marcheForcee") == '1') {
-                $this->setConfiguration("disable_marcheForcee", '0');
-                $this->save();        
-            };
-            $this->executeAsservissementActif();
-        }elseif ($temperature_water < 30) {
-            if ($this->getConfiguration("disable_marcheForcee") == '0') {
-                $this->setConfiguration("disable_marcheForcee", '1');
-                $this->save();        
-            };
-            $this->executeAsservissementAuto();
-        }
-
+        // Calcul simplifié : durée = température / 2 (ajustée par le coefficient).
+        // NB : la bascule "filtration forcée à haute température" n'est plus gérée ici
+        // (effet de bord supprimé). Elle est désormais évaluée sur la température LIVE
+        // à chaque cron par evaluateForcedFiltrationByTemperature(), quelle que soit la
+        // méthode de calcul (Courbe ou Temp/2).
         $dureeHeures = $temperature_water / 2.0;
     
         // Coefficient d'ajustement de la courbe (suivant config)
@@ -638,6 +838,7 @@ class pool extends eqLogic
     }
     public function caculateTimeTreatment($temperature_water) 
     {
+        log::add('pool', 'debug', $this->getHumanName() . 'caculateTimeTreatment() begin');
         // calcul du temps de traitement uniquement pour un elecrolyseur de sel intex qs200 et pour une piscine de 7m3
         // prise en compte des recomandation constructeur ecrite dans la notice
         // a voir plus tard pour pouvoir le parametrer
@@ -646,29 +847,31 @@ class pool extends eqLogic
 
         if ($temperature_water < 10)
         {
-            $dureeTRT = 0.00;
+            $dureeTRT = $this->getConfiguration("trt0to10");
         }   
         if ($temperature_water >= 10 && $temperature_water < 20)
         {
-            $dureeTRT = 6.00;  
+            $dureeTRT = $this->getConfiguration("trt10to20");  
         }
         if ($temperature_water >= 20 && $temperature_water < 30)
         {
-            $dureeTRT = 7.00;  
+            $dureeTRT = $this->getConfiguration("trt20to30");  
         }
         if ($temperature_water >= 30)
         {
-            $dureeTRT = 8.00; 
+            $dureeTRT = $this->getConfiguration("trt30");  
         }
-        $hh = floor($dureeTRT);
-        $mm = floor(($dureeTRT * 60) - ($hh * 60));
-        str_pad($hh, 2, 0, STR_PAD_LEFT) . ':' . str_pad($mm, 2, 0, STR_PAD_LEFT);
-        $this->getCmd(null, 'treatmenttime')->event(str_pad($hh, 2, 0, STR_PAD_LEFT) . ':' . str_pad($mm, 2, 0, STR_PAD_LEFT));
+        // log::add('pool', 'debug', $this->getHumanName() . 'durée TRT : ' . $dureeTRT . ' heures');
+        // $hh = floor($dureeTRT);
+        // $mm = floor(($dureeTRT * 60) - ($hh * 60));
+        // //str_pad($hh, 2, 0, STR_PAD_LEFT) . ':' . str_pad($mm, 2, 0, STR_PAD_LEFT);
+        // log::add('pool', 'debug', $this->getHumanName() . 'durée TRT : ' . $dureeTRT . ' heures');
+        $this->getCmd(null, 'treatmentTime')->event($dureeTRT);
         return $dureeTRT;
     }
     public function calculateTimeFiltration($temperature_water, $flgTomorrow)
     {
-        // log::add('pool', 'debug', $this->getHumanName() . 'calculateTimeFiltration() begin');
+        log::add('pool', 'debug', $this->getHumanName() . 'calculateTimeFiltration() begin');
 
         $temperatureCalcul = $this->getCmd(null, 'temperatureMaxi')->execCmd();
 
@@ -692,7 +895,7 @@ class pool extends eqLogic
                 break;
         }
         $dureeTraitement = $this->caculateTimeTreatment($temperatureCalcul);
-        // log::add('pool', 'debug', $this->getHumanName() . '$dureeTraitement=' . $dureeTraitement);
+        log::add('pool', 'debug', $this->getHumanName() . '$dureeTraitement=' . $dureeTraitement);
         $dureeTraitementSecondes = $dureeTraitement * 3600;
         list($filtrationSecondes, $filtrationTime) = $this->processingTime($dureeHeures);
 
@@ -915,10 +1118,14 @@ class pool extends eqLogic
 
             if ($this->getTraitement())
             {
-                $filtrationDebut = strtotime("00:00");
+                $heureDebutTraitement = $this->getConfiguration('traitementHeureDebut', '00:00');
+                $filtrationDebut = strtotime($heureDebutTraitement);
                 if ($flgTomorrow == true) {
-                    $filtrationDebut = strtotime('tomorrow midnight');
-                }   
+                    // Reporter seulement si la plage entière est passée (sinon la plage du jour est sautée si Jeedom redémarre après traitementHeureDebut)
+                    if (($filtrationDebut + $filtrationSecondes) < time()) {
+                        $filtrationDebut = strtotime('+1 day', $filtrationDebut);
+                    }
+                }
 
                 
                 $traitementDebut = $filtrationDebut + ($this->getConfiguration('delaisBeforeTreatment', '0') * 60); ; 
@@ -988,7 +1195,12 @@ class pool extends eqLogic
         $this->getCmd(null, 'filtrationPauseFin')->event($filtrationPauseFin);
 
         $this->getCmd(null, 'calculateStatus')->event(1); // 1 >> calcul effectué
-        
+
+        // Nouvelle plage : on réarme le réajustement horaire
+        $recalcCmd = $this->getCmd(null, 'filtrationRecalcDate');
+        if (is_object($recalcCmd)) {
+            $recalcCmd->event(0);
+        }
 
         if ($flgTomorrow == true) {
             $this->getCmd(null, 'temperatureMaxi')->event(0); // reset temperature maxi
@@ -1009,6 +1221,74 @@ class pool extends eqLogic
         // log::add('pool', 'debug', $this->getHumanName() . 'calculateTimeFiltration() end');
     }
 
+    /**
+     * Bascule "filtration forcée" pilotée par la température de l'eau (température LIVE).
+     *
+     * Évaluée à CHAQUE cron, sur la température courante (pas le maxi relevé), de façon
+     * INSTANTANÉE et INDÉPENDAMMENT de la méthode de calcul (Courbe / Temp÷2) et des plages.
+     *  - eau >= seuil          : passage en marche forcée (marcheForcee=1, filtration continue)
+     *  - eau <  seuil - hyst   : retour en mode auto (filtration sur plages programmées)
+     *
+     * Hystérésis pour éviter les oscillations autour du seuil quand l'eau le frôle.
+     *
+     * IMPORTANT : utilise son PROPRE flag interne 'forcageTemperatureActif' (et non
+     * 'disable_marcheForcee', qui reste réservé à la préférence utilisateur "annuler la
+     * marche forcée MANUELLE au début d'une plage"). Le bloc de reset de
+     * calculateStatusFiltration ignore l'annulation quand ce flag température est actif,
+     * pour que le forçage haute température survive aux plages.
+     *
+     * @param float $temperature_water température eau courante (live)
+     */
+    public function evaluateForcedFiltrationByTemperature($temperature_water)
+    {
+        $forced  = ($this->getConfiguration('forcageTemperatureActif', '0') == '1');
+        $externe = ($this->getConfiguration('cfgAsservissementExterne', 'enabled') != 'disabled');
+
+        // Conditions de pilotage par la température
+        $piloteOk = ($this->getConfiguration('forcageTemperatureEnabled', '1') == '1')
+            && !$this->getHivernage()                                  // hivernage piloté séparément
+            && !$externe                                               // asservissement externe : ne pas écraser
+            && is_numeric($temperature_water) && $temperature_water > 0; // température valide
+
+        if (!$piloteOk) {
+            // Conditions non réunies : relâcher proprement un forçage température encore actif
+            if ($forced) {
+                $this->setConfiguration('forcageTemperatureActif', '0');
+                $this->save();
+                if (!$externe) {
+                    $this->executeAsservissementAuto(); // marcheForcee=0 + activatingDevices()
+                }
+                log::add('pool', 'info', $this->getHumanName() . ' forçage température relâché (conditions non réunies)');
+            }
+            return;
+        }
+
+        $seuil = (float) $this->getConfiguration('forcageTemperatureSeuil', '30');
+        $hyst  = 0.5; // bande d'hystérésis (°C)
+
+        // État réel : flag interne ET commande marcheForcee réellement à 1 (auto-réparation
+        // si désynchronisés, ex. au tout premier démarrage).
+        $marcheForceeCmd = $this->getCmd(null, 'marcheForcee');
+        $cmdForced       = is_object($marcheForceeCmd) && $marcheForceeCmd->execCmd() == 1;
+        $tempForceActif  = $forced && $cmdForced;
+
+        if (!$tempForceActif && $temperature_water >= $seuil) {
+            // Au-dessus du seuil et pas déjà en marche forcée température : on enclenche
+            $this->setConfiguration('forcageTemperatureActif', '1');
+            $this->save();
+            $this->executeAsservissementActif(); // marcheForcee=1 + activatingDevices()
+            log::add('pool', 'info', $this->getHumanName() . ' eau ' . $temperature_water . '°C >= ' . $seuil . '°C : filtration forcée ON');
+        } elseif ($forced && $temperature_water < ($seuil - $hyst)) {
+            // Repassé sous le seuil (avec hystérésis) alors qu'on était en forcé température : retour auto
+            $this->setConfiguration('forcageTemperatureActif', '0');
+            $this->save();
+            $this->executeAsservissementAuto(); // marcheForcee=0 + activatingDevices()
+            log::add('pool', 'info', $this->getHumanName() . ' eau ' . $temperature_water . '°C < ' . ($seuil - $hyst) . '°C : retour mode auto');
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
     public function calculateStatusFiltration($temperature_water)
     {
         // log::add('pool', 'debug', $this->getHumanName() . 'calculateStatusFiltration() begin');
@@ -1018,6 +1298,25 @@ class pool extends eqLogic
         $filtrationTemperature = 0;
         $traitementTemperature = 0;
 
+        // ORP hystérésis : démarre sous orp_start, s'arrête à orp_stop
+        $orpAllowTraitement = true;
+        $orpValue = null;
+        $orpEnabled = $this->getConfiguration('cfgOrp', 'disabled') === 'enabled';
+        $orpStart = $orpEnabled ? $this->getConfiguration('orp_start', '') : '';
+        $orpStop  = $orpEnabled ? $this->getConfiguration('orp_stop', '')  : '';
+        if ($orpStart !== '' && $orpStop !== '') {
+            $orpCmd  = $this->getCmd('info', 'orp');
+            $orpValue = is_object($orpCmd) ? $orpCmd->execCmd() : null;
+            if ($orpValue !== null) {
+                $traitementActif = $this->getCmd(null, 'traitement')->execCmd() == '1';
+                if ($traitementActif) {
+                    $orpAllowTraitement = (float)$orpValue < (float)$orpStop;
+                } else {
+                    $orpAllowTraitement = (float)$orpValue < (float)$orpStart;
+                }
+                log::add('pool', 'debug', $this->getHumanName() . ' ORP=' . $orpValue . ' start=' . $orpStart . ' stop=' . $orpStop . ' actif=' . ($traitementActif ? 'oui' : 'non') . ' allow=' . ($orpAllowTraitement ? 'oui' : 'non'));
+            }
+        }
 
         $filtrationDebut = $this->getCmd(null, 'filtrationDebut')->execCmd();
         // log::add('pool', 'debug', $this->getHumanName() . '$filtrationDebut=' . date("d-m-Y H:i", $filtrationDebut));
@@ -1067,11 +1366,11 @@ class pool extends eqLogic
                     // Active la filtration
                     $filtrationTemperature = 1;
 
-                    if ($timeNow >= $traitementDebut && $timeNow <= $traitementFin) {
+                    if ($timeNow >= $traitementDebut && $timeNow <= $traitementFin && $orpAllowTraitement) {
                         log::add('pool', 'debug', $this->getHumanName() . 'activation du traitement');
                         // active le traitement
-                        $traitementTemperature = 1;                
-                    }                    
+                        $traitementTemperature = 1;
+                    }
                 }
 
 
@@ -1145,14 +1444,24 @@ class pool extends eqLogic
 
                     // Active la filtration
                     $filtrationTemperature = 1;
+
+                    if ($timeNow >= $traitementDebut && $timeNow <= $traitementFin && $orpAllowTraitement) {
+                        log::add('pool', 'debug', $this->getHumanName() . 'activation du traitement');
+                        $traitementTemperature = 1;
+                    }
                 }
             }
 
             if ($filtrationTemperature == 1) {
 
-                // Si Asservissement interne et marche forcee active on repasse en manuel
+                // Réajustement horaire de la plage en cours (mode normal, prolongation seule)
+                $this->adjustFiltrationCurrentDay($temperature_water);
+
+                // Si Asservissement interne et marche forcee MANUELLE active on repasse en manuel
+                // (sauf si le forçage est dû à la haute température : il doit survivre aux plages)
                 if ($this->getConfiguration('cfgAsservissementExterne', 'enabled') == 'disabled') {
-                    if ($this->getConfiguration('disable_marcheForcee', '0') == '1') {
+                    if ($this->getConfiguration('disable_marcheForcee', '0') == '1'
+                        && $this->getConfiguration('forcageTemperatureActif', '0') != '1') {
                         if ($this->getCmd(null, 'marcheForcee')->execCmd() == 1) {
                             // log::add('pool', 'debug', $this->getHumanName() . 'disable_marcheForcee');
                             $this->getCmd(null, 'marcheForcee')->event(0);
@@ -1178,8 +1487,29 @@ class pool extends eqLogic
         }
        
 
+        // ORP force traitement hors plage horaire : ORP < orp_start et heure < 22h00
+        if ($traitementTemperature == 0 && $orpStart !== '' && $orpStop !== '' && $orpValue !== null) {
+            $traitementActif = $this->getCmd(null, 'traitement')->execCmd() == '1';
+            $orpForceTrigger = false;
+            if ($traitementActif) {
+                // Traitement déjà actif via ORP : maintenir jusqu'à orp_stop
+                $orpForceTrigger = (float)$orpValue < (float)$orpStop;
+            } else {
+                // Hors plage : déclencher si ORP < orp_start.
+                // Le contrôle d'heure limite n'est appliqué que si l'heure limite est renseignée.
+                $orpHeureLimite  = $this->getConfiguration('orp_heure_limite', '');
+                $orpAvantLimite  = ($orpHeureLimite === '' || $orpHeureLimite === null) ? true : (int)date('G') < (int)$orpHeureLimite;
+                $orpForceTrigger = (float)$orpValue < (float)$orpStart && $orpAvantLimite;
+            }
+            if ($orpForceTrigger) {
+                $filtrationTemperature = 1;
+                $traitementTemperature = 1;
+                log::add('pool', 'debug', $this->getHumanName() . ' ORP force traitement hors plage : ORP=' . $orpValue . ' mV');
+            }
+        }
+
         if($this->getCmd(null, 'traitementTemperature')->execCmd() != $traitementTemperature) {
-            log::add('pool', 'debug', $this->getHumanName() . 'passage dans la condition');
+            //log::add('pool', 'debug', $this->getHumanName() . 'passage dans la condition');
             $this->getCmd(null, 'traitementTemperature')->event($traitementTemperature);
             // if ($traitementTemperature == 1) {
             //     log::add('pool', 'debug', $this->getHumanName() . 'allumons le traitement');
@@ -1200,6 +1530,122 @@ class pool extends eqLogic
         }
 
         // log::add('pool', 'debug', $this->getHumanName() . 'calculateStatusFiltration() end');
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Réajuste la plage de filtration du jour EN COURS pendant qu'elle se déroule.
+     *
+     * Problème résolu : quand une plage se termine après minuit, la plage suivante est
+     * figée la nuit sur la température de la veille (déjà retombée) et ne s'ajuste plus.
+     * Ici, tant que la filtration tourne, la température maxi relevée monte au fil de la
+     * journée ; on recalcule la durée et on PROLONGE la fin de plage si besoin.
+     *
+     * Décisions de conception :
+     *  - Prolongation uniquement : on ne raccourcit jamais une plage en cours.
+     *  - Mode normal (horaire pivot) uniquement : ni HC/HP, ni hivernage.
+     *  - Fréquence réglable (config recalcHoraireFrequence, défaut 60 min).
+     *
+     * @param float $temperature_water température eau courante (repli si pas de maxi)
+     */
+    public function adjustFiltrationCurrentDay($temperature_water)
+    {
+        // Fonction désactivée par défaut
+        if ($this->getConfiguration('recalcHoraireEnabled', '0') != '1') {
+            return;
+        }
+
+        // Mode HC/HP non concerné (décision : mode normal datePivot uniquement)
+        if ($this->getConfiguration('Activate_HCHP', '0') == '1') {
+            return;
+        }
+
+        $recalcCmd = $this->getCmd(null, 'filtrationRecalcDate');
+        if (!is_object($recalcCmd)) {
+            // Commande pas encore créée (équipement non re-sauvegardé après MAJ)
+            return;
+        }
+
+        // Fréquence en minutes (défaut 60), plancher à 5 min
+        $frequence = (int) $this->getConfiguration('recalcHoraireFrequence', '60');
+        if ($frequence < 5) {
+            $frequence = 60;
+        }
+
+        $timeNow    = time();
+        $lastRecalc = (int) $recalcCmd->execCmd();
+        if ($lastRecalc > 0 && ($timeNow - $lastRecalc) < ($frequence * 60)) {
+            return; // pas encore l'heure du prochain réajustement
+        }
+
+        $filtrationDebut = (int) $this->getCmd(null, 'filtrationDebut')->execCmd();
+        $filtrationFin   = (int) $this->getCmd(null, 'filtrationFin')->execCmd();
+        if ($filtrationDebut == 0 || $filtrationFin == 0) {
+            return;
+        }
+
+        // Température de calcul = maxi relevé (réactualisé par la filtration en cours)
+        $temperatureCalcul = $this->getCmd(null, 'temperatureMaxi')->execCmd();
+        if ($temperatureCalcul == '' || $temperatureCalcul == 0) {
+            $temperatureCalcul = $temperature_water;
+        }
+
+        // Nouvelle durée de filtration selon la méthode configurée (même logique que calculateTimeFiltration)
+        switch ($this->getConfiguration('methodeCalcul', '1')) {
+            case '2':
+                $dureeHeures = $this->calculateTimeFiltrationWithTemperatureReducedByHalf($temperatureCalcul);
+                break;
+            case '1':
+            default:
+                $dureeHeures = $this->calculateTimeFiltrationWithCurve($temperatureCalcul);
+                break;
+        }
+        list($filtrationSecondes, $filtrationTime) = $this->processingTime($dureeHeures);
+
+        // Ajout du temps de pause (capé à 24h, comme calculateTimeFiltration)
+        $pausePivotSecondes = $this->getConfiguration('pausePivot', '0') * 60;
+        if (($filtrationSecondes + $pausePivotSecondes) > (3600 * 24)) {
+            $pausePivotSecondes = (3600 * 24) - $filtrationSecondes;
+        }
+        $dureeTotaleSecondes = $filtrationSecondes + $pausePivotSecondes;
+
+        // Nouvelle fin = début mémorisé + durée totale recalculée
+        $nouvelleFin = $filtrationDebut + $dureeTotaleSecondes;
+
+        // Prolongation uniquement : on ne raccourcit jamais une plage en cours
+        if ($nouvelleFin <= $filtrationFin) {
+            $recalcCmd->event($timeNow);
+            return;
+        }
+
+        // Applique la prolongation
+        $this->getCmd(null, 'filtrationFin')->event($nouvelleFin);
+        $this->getCmd(null, 'filtrationTime')->event($filtrationTime);
+
+        // Régénère l'affichage du créneau (la pause ne bouge pas, seule la fin recule)
+        $filtrationPauseDebut = $this->getCmd(null, 'filtrationPauseDebut')->execCmd();
+        $filtrationPauseFin   = $this->getCmd(null, 'filtrationPauseFin')->execCmd();
+        if ($filtrationPauseDebut != $filtrationPauseFin) {
+            $this->getCmd(null, 'filtrationSchedule')->event(
+                date("H:i", $filtrationDebut) . '-'
+                    . date("H:i", $filtrationPauseDebut) . ' '
+                    . date("H:i", $filtrationPauseFin) . '-'
+                    . date("H:i", $nouvelleFin) . ' : '
+                    . $temperatureCalcul . '°C'
+            );
+        } else {
+            $this->getCmd(null, 'filtrationSchedule')->event(
+                date("H:i", $filtrationDebut) . '-'
+                    . date("H:i", $nouvelleFin) . ' : '
+                    . $temperatureCalcul . '°C'
+            );
+        }
+
+        $recalcCmd->event($timeNow);
+
+        log::add('pool', 'info', $this->getHumanName() . ' réajustement horaire : plage prolongée jusqu\'à '
+            . date("H:i", $nouvelleFin) . ' (tempMaxi=' . $temperatureCalcul . '°C, durée=' . $filtrationTime . ')');
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1656,6 +2102,10 @@ class pool extends eqLogic
 
         // log::add('pool', 'debug', $this->getHumanName() . 'temperature_water=' . $temperature_water);
 
+        // En mode API (temp_trigger_url), la valeur vient de measureSensor() : on ne réévalue
+        // jamais l'ancienne sonde temperature_water. On conserve juste l'alerte d'absence de MAJ.
+        $apiMode = !empty($this->getConfiguration('temp_trigger_url'));
+
         if ($this->getConfiguration('maxTimeUpdateTemp') != '') {
             if ($temperature->getCollectDate() != '' && strtotime($temperature->getCollectDate()) < strtotime('-' . $this->getConfiguration('maxTimeUpdateTemp') . ' minutes' . date('Y-m-d H:i:s'))) {
                 log::add('pool', 'error', $this->getHumanName() . __(" : Attention il n'y a pas eu de mise à jour de la température depuis ", __FILE__) . $this->getConfiguration('maxTimeUpdateTemp') . __(' mn', __FILE__));
@@ -1663,10 +2113,12 @@ class pool extends eqLogic
                 // log::add('pool', 'debug', $this->getHumanName() . 'maxTimeUpdateTemp > evaluateTemperatureWater');
 
                 // La temperature n'a pas ete mise à jour depuis le temps definit par la config, on force la lecture
-                $temperature_water = $this->evaluateTemperatureWater();
+                if (!$apiMode) {
+                    $temperature_water = $this->evaluateTemperatureWater();
+                }
             }
         } else {
-            if ($temperature_water == '') {
+            if ($temperature_water == '' && !$apiMode) {
 
                 // log::add('pool', 'debug', $this->getHumanName() . 'temperature_water == \'\' > evaluateTemperatureWater');
 
@@ -1952,7 +2404,69 @@ class pool extends eqLogic
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////                       CHOC FILTRATION                     ///////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
+    public function executeChocFiltrationOff()
+    {
+         if((int)$this->getCmd(null, 'filtrationChoc')->execCmd() === 1) {
+            $this->getCmd(null, 'filtrationChoc')->event(0);
+            $this->getCmd(null, 'filtrationChocStatus')->event(__('Arrêté', __FILE__));
+            $this->activatingDevices();
+        }
+    }
+
+    public function executeChocFiltrationOn()
+    {
+         if((int)$this->getCmd(null, 'filtrationChoc')->execCmd() !== 1) {
+            $this->getCmd(null, 'filtrationChoc')->event(1);
+            $this->getCmd(null, 'filtrationChocStatus')->event(__('Actif', __FILE__));
+            $this->activatingDevices();
+        }
+    }
+
+    public function executeBoostOn($dureeHeures = null)
+    {
+        if ((int)$this->getCmd(null, 'boost')->execCmd() !== 1) {
+
+            // Durée avant coupure auto : surcharge widget si fournie, sinon config équipement
+            if ($dureeHeures === null || $dureeHeures === '') {
+                $dureeHeures = $this->getConfiguration('boostDuree', '2');
+            }
+            $dureeHeures = (float)$dureeHeures;
+
+            $this->getCmd(null, 'boost')->event(1);
+            $this->getCmd(null, 'filtrationChoc')->event(1);
+            $this->getCmd(null, 'filtrationChocStatus')->event(__('Actif', __FILE__));
+
+            // Timestamp de coupure automatique (0 = illimité)
+            $boostFin = ($dureeHeures > 0) ? time() + (int)round($dureeHeures * 3600) : 0;
+            $boostFinCmd = $this->getCmd(null, 'boostFin');
+            if (is_object($boostFinCmd)) {
+                $boostFinCmd->event($boostFin);
+            }
+
+            $this->activatingDevices();
+        }
+    }
+
+    public function executeBoostOff()
+    {
+        if ((int)$this->getCmd(null, 'boost')->execCmd() === 1) {
+            $this->getCmd(null, 'boost')->event(0);
+            $this->getCmd(null, 'filtrationChoc')->event(0);
+            $this->getCmd(null, 'filtrationChocStatus')->event(__('Arrêté', __FILE__));
+
+            $boostFinCmd = $this->getCmd(null, 'boostFin');
+            if (is_object($boostFinCmd)) {
+                $boostFinCmd->event(0);
+            }
+
+            $this->activatingDevices();
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
     public function executeResetCalcul()
     {
         log::add('pool', 'debug', $this->getHumanName() . 'executeResetCalcul begin');
@@ -2261,6 +2775,95 @@ class pool extends eqLogic
 
         $cmdTraitement->setCollectDate('');
         $cmdTraitement->event(0);
+    }
+
+    /**
+     * Vérifie que l'électrolyseur produit réellement du chlore lorsque le traitement est actif.
+     * Compare la consommation électrique (commande info configurée) au seuil défini.
+     * Alimente la commande info 'productionChlore' (1 = produit, 0 = arrêté/défaut) et
+     * déclenche les actions 'chloreDefautOn' (notification) une seule fois par cycle de défaut.
+     */
+    public function checkChloreProduction()
+    {
+        if ($this->getConfiguration('cfgTraitement', 'enabled') != 'enabled') {
+            return;
+        }
+        $exprPuissance = $this->getConfiguration('electrolyseur_puissance');
+        if (empty($exprPuissance)) {
+            return; // contrôle non configuré
+        }
+        $cmdProd = $this->getCmd(null, 'productionChlore');
+        if (!is_object($cmdProd)) {
+            return;
+        }
+        $cmdNotif = $this->getCmd(null, 'chloreDefautNotifie');
+
+        $cmdTraitement = $this->getCmd('info', 'traitement');
+        $traitement = is_object($cmdTraitement) ? (int) $cmdTraitement->execCmd() : 0;
+
+        // Traitement à l'arrêt : pas de production attendue, on réarme le drapeau de notification
+        if ($traitement !== 1) {
+            if ((int) $cmdProd->execCmd() !== 0) {
+                $cmdProd->event(0);
+            }
+            if (is_object($cmdNotif) && (int) $cmdNotif->execCmd() !== 0) {
+                $cmdNotif->event(0);
+            }
+            return;
+        }
+
+        $puissance = jeedom::evaluateExpression($exprPuissance);
+        if (!is_numeric($puissance)) {
+            log::add('pool', 'warning', $this->getHumanName() . ' checkChloreProduction : puissance non numérique (' . $puissance . ')');
+            return;
+        }
+        $seuil = (float) $this->getConfiguration('electrolyseur_seuil', 5);
+
+        // Production OK : puissance au-dessus du seuil
+        if ((float) $puissance >= $seuil) {
+            if ((int) $cmdProd->execCmd() !== 1) {
+                $cmdProd->event(1);
+            }
+            if (is_object($cmdNotif) && (int) $cmdNotif->execCmd() !== 0) {
+                $cmdNotif->event(0); // réarmement après retour à la normale
+            }
+            return;
+        }
+
+        // Puissance sous le seuil : délai de grâce pour l'amorçage de l'électrolyseur
+        $grace = (int) $this->getConfiguration('electrolyseur_grace', 5) * 60;
+        $cmdDebut = $this->getCmd('info', 'traitementDebut');
+        $traitementDebut = is_object($cmdDebut) ? (int) $cmdDebut->execCmd() : 0;
+        if ($grace > 0 && $traitementDebut > 0 && time() < ($traitementDebut + $grace)) {
+            return; // encore en phase d'amorçage, on ne déclare pas de défaut
+        }
+
+        // Défaut de production confirmé
+        if ((int) $cmdProd->execCmd() !== 0) {
+            $cmdProd->event(0);
+        }
+
+        // Notification unique par cycle de défaut
+        if (is_object($cmdNotif) && (int) $cmdNotif->execCmd() === 0) {
+            $cmdNotif->event(1);
+            log::add('pool', 'info', $this->getHumanName() . ' : défaut de production de chlore (puissance ' . $puissance . 'W < seuil ' . $seuil . 'W)');
+
+            $actions = $this->getConfiguration('chloreDefautOn');
+            if (is_array($actions)) {
+                foreach ($actions as $action) {
+                    try {
+                        $cmd = cmd::byId(str_replace('#', '', $action['cmd']));
+                        if (is_object($cmd) && $this->getId() == $cmd->getEqLogic_id()) {
+                            continue;
+                        }
+                        $options = isset($action['options']) ? $action['options'] : array();
+                        scenarioExpression::createAndExec('action', $action['cmd'], $options);
+                    } catch (Exception $e) {
+                        log::add('pool', 'error', $this->getHumanName() . __(' : Erreur lors de l\'éxecution de ', __FILE__) . $action['cmd'] . __('. Détails : ', __FILE__) . $e->getMessage());
+                    }
+                }
+            }
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -2601,6 +3204,10 @@ class pool extends eqLogic
             $this->setConfiguration('rincageDuree', '3');
         }
 
+        if ($this->getConfiguration('boostDuree') == '') {
+            $this->setConfiguration('boostDuree', '2');
+        }
+
         if ($this->getConfiguration('distributionDatePivot') == '') {
             $this->setConfiguration('distributionDatePivot', '1');
         }
@@ -2726,26 +3333,33 @@ class pool extends eqLogic
                 $temperature->setOrder($order++);
                 $temperature->setUnite('°C');
                 if ($this->getConfiguration('sondeLocalTechnique', '0') == '0') {
-                    $temperature->setIsVisible(1);
+                    $temperature->setIsVisible(0);
                 } else {
                     $temperature->setIsVisible(0);
                 }
                 $temperature->setIsHistorized(1);
 
+                // Mode API (temp_trigger_url) : la commande est alimentée uniquement par
+                // measureSensor()->event(). On ne la lie PAS à l'ancienne sonde temperature_water
+                // (sinon la sonde externe écrase la valeur de l'API).
                 $value = '';
-                preg_match_all("/#([0-9]*)#/", $this->getConfiguration('temperature_water'), $matches);
-                foreach ($matches[1] as $cmd_id) {
-                    if (is_numeric($cmd_id)) {
-                        $cmd = cmd::byId($cmd_id);
-                        if (is_object($cmd) && $cmd->getType() == 'info') {
-                            $value .= '#' . $cmd_id . '#';
-                            break;
+                if (empty($this->getConfiguration('temp_trigger_url'))) {
+                    preg_match_all("/#([0-9]*)#/", $this->getConfiguration('temperature_water'), $matches);
+                    foreach ($matches[1] as $cmd_id) {
+                        if (is_numeric($cmd_id)) {
+                            $cmd = cmd::byId($cmd_id);
+                            if (is_object($cmd) && $cmd->getType() == 'info') {
+                                $value .= '#' . $cmd_id . '#';
+                                break;
+                            }
                         }
                     }
                 }
                 $temperature->setValue($value);
                 $temperature->save();
-                $temperature->event($temperature->execute());
+                if (empty($this->getConfiguration('temp_trigger_url'))) {
+                    $temperature->event($temperature->execute());
+                }
             }
 
             ///////////////////////////////////////////////////////////////////////////////////////
@@ -2767,7 +3381,7 @@ class pool extends eqLogic
                 $temperature_display->setOrder($order++);
                 $temperature_display->setUnite('°C');
                 if ($this->getConfiguration('sondeLocalTechnique', '0') == '1') {
-                    $temperature_display->setIsVisible(1);
+                    $temperature_display->setIsVisible(0);
                 } else {
                     $temperature_display->setIsVisible(0);
                 }
@@ -2799,7 +3413,7 @@ class pool extends eqLogic
                     || $this->getConfiguration('cfgHivernage', 'enabled') == 'enabled'
                     || $this->getConfiguration('cfgHivernage', 'enabled') == 'widget'
                 ) {
-                    $temperature_outdoor->setIsVisible(1);
+                    $temperature_outdoor->setIsVisible(0);
                 } else {
                     $temperature_outdoor->setIsVisible(0);
                 }
@@ -2839,7 +3453,7 @@ class pool extends eqLogic
                 $filtrationTime->setType('info');
                 $filtrationTime->setSubType('string');
                 $filtrationTime->setLogicalId('filtrationTime');
-                $filtrationTime->setIsVisible(1);
+                $filtrationTime->setIsVisible(0);
                 $filtrationTime->setOrder($order++);
                 $filtrationTime->setIsHistorized(0);
                 $filtrationTime->save();
@@ -2861,7 +3475,7 @@ class pool extends eqLogic
                 $treatmentTime->setType('info');
                 $treatmentTime->setSubType('string');
                 $treatmentTime->setLogicalId('treatmentTime');
-                $treatmentTime->setIsVisible(1);
+                $treatmentTime->setIsVisible(0);
                 $treatmentTime->setOrder($order++);
                 $treatmentTime->setIsHistorized(0);
                 $treatmentTime->save();
@@ -2880,7 +3494,7 @@ class pool extends eqLogic
                 $filtrationSchedule->setType('info');
                 $filtrationSchedule->setSubType('string');
                 $filtrationSchedule->setLogicalId('filtrationSchedule');
-                $filtrationSchedule->setIsVisible(1);
+                $filtrationSchedule->setIsVisible(0);
                 $filtrationSchedule->setOrder($order++);
                 $filtrationSchedule->setIsHistorized(0);
                 $filtrationSchedule->save();
@@ -2902,12 +3516,247 @@ class pool extends eqLogic
                 $resetCalcul->setOrder($order++);
 
                 if ($this->getConfiguration('display_reset', '0') == '1') {
-                    $resetCalcul->setIsVisible(1);
+                    $resetCalcul->setIsVisible(0);
                 } else {
                     $resetCalcul->setIsVisible(0);
                 }
 
                 $resetCalcul->save();
+            }
+            // filtration choc on
+            {
+                $chocFilterOn = $this->getCmd(null, 'chocFilterOn');
+                if (!is_object($chocFilterOn)) {
+                    $chocFilterOn = new poolCmd();
+                }
+                $chocFilterOn->setEqLogic_id($this->getId());
+                $chocFilterOn->setName(__('Filtration choc On', __FILE__));
+                $chocFilterOn->setType('action');
+                $chocFilterOn->setSubType('other');
+                $chocFilterOn->setLogicalId('chocFilterOn');
+                $chocFilterOn->setOrder($order++);
+
+                $chocFilterOn->setIsVisible(0);
+                
+                $chocFilterOn->save();
+            }
+
+            // filtration choc off
+            {
+                $chocFilterOff = $this->getCmd(null, 'chocFilterOff');
+                if (!is_object($chocFilterOff)) {
+                    $chocFilterOff = new poolCmd();
+                }
+                $chocFilterOff->setEqLogic_id($this->getId());
+                $chocFilterOff->setName(__('Filtration choc Off', __FILE__));
+                $chocFilterOff->setType('action');
+                $chocFilterOff->setSubType('other');
+                $chocFilterOff->setLogicalId('chocFilterOff');
+                $chocFilterOff->setOrder($order++);
+
+                $chocFilterOff->setIsVisible(0);
+                
+                $chocFilterOff->save();
+            }
+
+            // filtrationChocStatus
+            {
+                $filtrationChocStatus = $this->getCmd(null, 'filtrationChocStatus');
+                if (!is_object($filtrationChocStatus)) {
+                    $filtrationChocStatus = new poolCmd();
+                }
+                $filtrationChocStatus->setEqLogic_id($this->getId());
+                $filtrationChocStatus->setName(__('Filtration choc:', __FILE__));
+                $filtrationChocStatus->setType('info');
+                $filtrationChocStatus->setSubType('string');
+                $filtrationChocStatus->setLogicalId('filtrationChocStatus');
+                $filtrationChocStatus->setIsVisible(0);
+                $filtrationChocStatus->setOrder($order++);
+                $filtrationChocStatus->setIsHistorized(0);
+                $filtrationChocStatus->save();
+            }
+
+            // filtration
+            {
+                $filtrationChoc = $this->getCmd(null, 'filtrationChoc');
+                if (!is_object($filtrationChoc)) {
+                    $filtrationChoc = new poolCmd();
+                }
+                $filtrationChoc->setEqLogic_id($this->getId());
+                $filtrationChoc->setName('filtrationChoc');
+                $filtrationChoc->setType('info');
+                $filtrationChoc->setSubType('binary');
+                $filtrationChoc->setLogicalId('filtrationChoc');
+                $filtrationChoc->setIsVisible(0);
+                $filtrationChoc->setOrder($order++);
+                $filtrationChoc->setIsHistorized(1);
+                $filtrationChoc->save();
+            }
+
+            // boost (info/binary)
+            {
+                $boostCmd = $this->getCmd(null, 'boost');
+                if (!is_object($boostCmd)) {
+                    $boostCmd = new poolCmd();
+                }
+                $boostCmd->setEqLogic_id($this->getId());
+                $boostCmd->setName(__('Boost', __FILE__));
+                $boostCmd->setType('info');
+                $boostCmd->setSubType('binary');
+                $boostCmd->setLogicalId('boost');
+                $boostCmd->setIsVisible(0);
+                $boostCmd->setOrder($order++);
+                $boostCmd->setIsHistorized(0);
+                $boostCmd->save();
+            }
+
+            // boostFin (info/numeric) : timestamp de coupure automatique du boost (0 = illimité)
+            {
+                $boostFinCmd = $this->getCmd(null, 'boostFin');
+                if (!is_object($boostFinCmd)) {
+                    $boostFinCmd = new poolCmd();
+                }
+                $boostFinCmd->setEqLogic_id($this->getId());
+                $boostFinCmd->setName('boostFin');
+                $boostFinCmd->setType('info');
+                $boostFinCmd->setSubType('numeric');
+                $boostFinCmd->setLogicalId('boostFin');
+                $boostFinCmd->setIsVisible(0);
+                $boostFinCmd->setOrder($order++);
+                $boostFinCmd->setIsHistorized(0);
+                $boostFinCmd->save();
+            }
+
+            // boostOn (action)
+            {
+                $boostOnCmd = $this->getCmd(null, 'boostOn');
+                if (!is_object($boostOnCmd)) {
+                    $boostOnCmd = new poolCmd();
+                }
+                $boostOnCmd->setEqLogic_id($this->getId());
+                $boostOnCmd->setName(__('Boost On', __FILE__));
+                $boostOnCmd->setType('action');
+                $boostOnCmd->setSubType('other');
+                $boostOnCmd->setLogicalId('boostOn');
+                $boostOnCmd->setIsVisible(0);
+                $boostOnCmd->setOrder($order++);
+                $boostOnCmd->save();
+            }
+
+            // boostOff (action)
+            {
+                $boostOffCmd = $this->getCmd(null, 'boostOff');
+                if (!is_object($boostOffCmd)) {
+                    $boostOffCmd = new poolCmd();
+                }
+                $boostOffCmd->setEqLogic_id($this->getId());
+                $boostOffCmd->setName(__('Boost Off', __FILE__));
+                $boostOffCmd->setType('action');
+                $boostOffCmd->setSubType('other');
+                $boostOffCmd->setLogicalId('boostOff');
+                $boostOffCmd->setIsVisible(0);
+                $boostOffCmd->setOrder($order++);
+                $boostOffCmd->save();
+            }
+
+            // ph (info/numeric)
+            {
+                $phCmd = $this->getCmd(null, 'ph');
+                if (!is_object($phCmd)) {
+                    $phCmd = new poolCmd();
+                }
+                $phCmd->setEqLogic_id($this->getId());
+                $phCmd->setName(__('pH', __FILE__));
+                $phCmd->setType('info');
+                $phCmd->setSubType('numeric');
+                $phCmd->setLogicalId('ph');
+                $phCmd->setIsVisible(1);
+                $phCmd->setOrder($order++);
+                $phCmd->setIsHistorized(1);
+                $phCmd->setUnite('');
+                $phCmd->save();
+            }
+
+            // phSet (action/message)
+            {
+                $phSetCmd = $this->getCmd(null, 'phSet');
+                if (!is_object($phSetCmd)) {
+                    $phSetCmd = new poolCmd();
+                }
+                $phSetCmd->setEqLogic_id($this->getId());
+                $phSetCmd->setName(__('Définir pH', __FILE__));
+                $phSetCmd->setType('action');
+                $phSetCmd->setSubType('message');
+                $phSetCmd->setLogicalId('phSet');
+                $phSetCmd->setIsVisible(0);
+                $phSetCmd->setOrder($order++);
+                $phSetCmd->save();
+            }
+
+            // phUpdate (action/other) — déclenche manuellement la mesure du capteur pH
+            {
+                $phUpdateCmd = $this->getCmd(null, 'phUpdate');
+                if (!is_object($phUpdateCmd)) {
+                    $phUpdateCmd = new poolCmd();
+                }
+                $phUpdateCmd->setEqLogic_id($this->getId());
+                $phUpdateCmd->setName(__('Mettre à jour pH', __FILE__));
+                $phUpdateCmd->setType('action');
+                $phUpdateCmd->setSubType('other');
+                $phUpdateCmd->setLogicalId('phUpdate');
+                $phUpdateCmd->setIsVisible(0);
+                $phUpdateCmd->setOrder($order++);
+                $phUpdateCmd->save();
+            }
+
+            // orp (info/numeric)
+            {
+                $orpCmd = $this->getCmd(null, 'orp');
+                if (!is_object($orpCmd)) {
+                    $orpCmd = new poolCmd();
+                }
+                $orpCmd->setEqLogic_id($this->getId());
+                $orpCmd->setName(__('ORP', __FILE__));
+                $orpCmd->setType('info');
+                $orpCmd->setSubType('numeric');
+                $orpCmd->setLogicalId('orp');
+                $orpCmd->setIsVisible(1);
+                $orpCmd->setOrder($order++);
+                $orpCmd->setIsHistorized(1);
+                $orpCmd->setUnite('mV');
+                $orpCmd->save();
+            }
+
+            // orpSet (action/message)
+            {
+                $orpSetCmd = $this->getCmd(null, 'orpSet');
+                if (!is_object($orpSetCmd)) {
+                    $orpSetCmd = new poolCmd();
+                }
+                $orpSetCmd->setEqLogic_id($this->getId());
+                $orpSetCmd->setName(__('Définir ORP', __FILE__));
+                $orpSetCmd->setType('action');
+                $orpSetCmd->setSubType('message');
+                $orpSetCmd->setLogicalId('orpSet');
+                $orpSetCmd->setIsVisible(0);
+                $orpSetCmd->setOrder($order++);
+                $orpSetCmd->save();
+            }
+
+            // orpUpdate (action/other) — déclenche manuellement la mesure du capteur ORP
+            {
+                $orpUpdateCmd = $this->getCmd(null, 'orpUpdate');
+                if (!is_object($orpUpdateCmd)) {
+                    $orpUpdateCmd = new poolCmd();
+                }
+                $orpUpdateCmd->setEqLogic_id($this->getId());
+                $orpUpdateCmd->setName(__('Mettre à jour ORP', __FILE__));
+                $orpUpdateCmd->setType('action');
+                $orpUpdateCmd->setSubType('other');
+                $orpUpdateCmd->setLogicalId('orpUpdate');
+                $orpUpdateCmd->setIsVisible(0);
+                $orpUpdateCmd->setOrder($order++);
+                $orpUpdateCmd->save();
             }
 
             ///////////////////////////////////////////////////////////////////////////////////////
@@ -2923,7 +3772,7 @@ class pool extends eqLogic
                 $filtrationStatus->setType('info');
                 $filtrationStatus->setSubType('string');
                 $filtrationStatus->setLogicalId('filtrationStatus');
-                $filtrationStatus->setIsVisible(1);
+                $filtrationStatus->setIsVisible(0);
                 $filtrationStatus->setOrder($order++);
                 $filtrationStatus->setIsHistorized(0);
                 $filtrationStatus->save();
@@ -2960,7 +3809,7 @@ class pool extends eqLogic
                 $chauffageStatus->setSubType('string');
                 $chauffageStatus->setLogicalId('chauffageStatus');
                 if ($this->getConfiguration('cfgChauffage', 'enabled') == 'enabled') {
-                    $chauffageStatus->setIsVisible(1);
+                    $chauffageStatus->setIsVisible(0);
                 } else {
                     $chauffageStatus->setIsVisible(0);
                 }
@@ -3000,7 +3849,7 @@ class pool extends eqLogic
                 $traitementStatus->setSubType('string');
                 $traitementStatus->setLogicalId('traitementStatus');
                 if ($this->getConfiguration('cfgTraitement', 'enabled') == 'enabled') {
-                    $traitementStatus->setIsVisible(1);
+                    $traitementStatus->setIsVisible(0);
                 } else {
                     $traitementStatus->setIsVisible(0);
                 }
@@ -3026,6 +3875,42 @@ class pool extends eqLogic
                 $traitement->save();
             }
 
+            // productionChlore : production réelle de l'électrolyseur (1 = produit, 0 = arrêté/défaut)
+            {
+                $productionChlore = $this->getCmd(null, 'productionChlore');
+                if (!is_object($productionChlore)) {
+                    $productionChlore = new poolCmd();
+                    $productionChlore->setValue(0);
+                }
+                $productionChlore->setEqLogic_id($this->getId());
+                $productionChlore->setName(__('Production chlore', __FILE__));
+                $productionChlore->setType('info');
+                $productionChlore->setSubType('binary');
+                $productionChlore->setLogicalId('productionChlore');
+                $productionChlore->setIsVisible(0);
+                $productionChlore->setOrder($order++);
+                $productionChlore->setIsHistorized(0);
+                $productionChlore->save();
+            }
+
+            // chloreDefautNotifie : drapeau anti-spam de la notification de défaut (interne)
+            {
+                $chloreDefautNotifie = $this->getCmd(null, 'chloreDefautNotifie');
+                if (!is_object($chloreDefautNotifie)) {
+                    $chloreDefautNotifie = new poolCmd();
+                    $chloreDefautNotifie->setValue(0);
+                }
+                $chloreDefautNotifie->setEqLogic_id($this->getId());
+                $chloreDefautNotifie->setName('chloreDefautNotifie');
+                $chloreDefautNotifie->setType('info');
+                $chloreDefautNotifie->setSubType('binary');
+                $chloreDefautNotifie->setLogicalId('chloreDefautNotifie');
+                $chloreDefautNotifie->setIsVisible(0);
+                $chloreDefautNotifie->setOrder($order++);
+                $chloreDefautNotifie->setIsHistorized(0);
+                $chloreDefautNotifie->save();
+            }
+
             ///////////////////////////////////////////////////////////////////////////////////////
 
             // asservissement / hivernage Status
@@ -3044,7 +3929,7 @@ class pool extends eqLogic
                     $this->getConfiguration('cfgAsservissementExterne', 'enabled') == 'disabled'
                     || $this->getConfiguration('cfgHivernage', 'enabled') == 'widget'
                 ) {
-                    $asservissementStatus->setIsVisible(1);
+                    $asservissementStatus->setIsVisible(0);
                 } else {
                     $asservissementStatus->setIsVisible(0);
                 }
@@ -3069,7 +3954,7 @@ class pool extends eqLogic
                 $asservissementActif->setOrder($order++);
 
                 if ($this->getConfiguration('cfgAsservissementExterne', 'enabled') == 'disabled') {
-                    $asservissementActif->setIsVisible(1);
+                    $asservissementActif->setIsVisible(0);
                 } else {
                     $asservissementActif->setIsVisible(0);
                 }
@@ -3091,7 +3976,7 @@ class pool extends eqLogic
                 $asservissementAuto->setOrder($order++);
 
                 if ($this->getConfiguration('cfgAsservissementExterne', 'enabled') == 'disabled') {
-                    $asservissementAuto->setIsVisible(1);
+                    $asservissementAuto->setIsVisible(0);
                 } else {
                     $asservissementAuto->setIsVisible(0);
                 }
@@ -3114,7 +3999,7 @@ class pool extends eqLogic
                 $asservissementInactif->setOrder($order++);
 
                 if ($this->getConfiguration('cfgAsservissementExterne', 'enabled') == 'disabled') {
-                    $asservissementInactif->setIsVisible(1);
+                    $asservissementInactif->setIsVisible(0);
                 } else {
                     $asservissementInactif->setIsVisible(0);
                 }
@@ -3138,7 +4023,7 @@ class pool extends eqLogic
                 $saison->setOrder($order++);
 
                 if ($this->getConfiguration('cfgHivernage', 'enabled') == 'widget') {
-                    $saison->setIsVisible(1);
+                    $saison->setIsVisible(0);
                 } else {
                     $saison->setIsVisible(0);
                 }
@@ -3161,7 +4046,7 @@ class pool extends eqLogic
                 $hivernage->setOrder($order++);
 
                 if ($this->getConfiguration('cfgHivernage', 'enabled') == 'widget') {
-                    $hivernage->setIsVisible(1);
+                    $hivernage->setIsVisible(0);
                 } else {
                     $hivernage->setIsVisible(0);
                 }
@@ -3183,7 +4068,7 @@ class pool extends eqLogic
                 $surpresseurStatus->setLogicalId('surpresseurStatus');
 
                 if ($this->getConfiguration('cfgSurpresseur', 'enabled') == 'enabled') {
-                    $surpresseurStatus->setIsVisible(1);
+                    $surpresseurStatus->setIsVisible(0);
                 } else {
                     $surpresseurStatus->setIsVisible(0);
                 }
@@ -3207,7 +4092,7 @@ class pool extends eqLogic
                 $surpresseurOn->setOrder($order++);
 
                 if ($this->getConfiguration('cfgSurpresseur', 'enabled') == 'enabled') {
-                    $surpresseurOn->setIsVisible(1);
+                    $surpresseurOn->setIsVisible(0);
                 } else {
                     $surpresseurOn->setIsVisible(0);
                 }
@@ -3247,7 +4132,7 @@ class pool extends eqLogic
                 $filtreSableLavageStatus->setLogicalId('filtreSableLavageStatus');
 
                 if ($this->getConfiguration('cfgFiltreSable', 'enabled') == 'enabled') {
-                    $filtreSableLavageStatus->setIsVisible(1);
+                    $filtreSableLavageStatus->setIsVisible(0);
                 } else {
                     $filtreSableLavageStatus->setIsVisible(0);
                 }
@@ -3271,7 +4156,7 @@ class pool extends eqLogic
                 $filtreSableLavageOn->setOrder($order++);
 
                 if ($this->getConfiguration('cfgFiltreSable', 'enabled') == 'enabled') {
-                    $filtreSableLavageOn->setIsVisible(1);
+                    $filtreSableLavageOn->setIsVisible(0);
                 } else {
                     $filtreSableLavageOn->setIsVisible(0);
                 }
@@ -3298,7 +4183,7 @@ class pool extends eqLogic
                     $this->getConfiguration('cfgSurpresseur', 'enabled') == 'enabled'
                     || $this->getConfiguration('cfgFiltreSable', 'enabled') == 'enabled'
                 ) {
-                    $poolStop->setIsVisible(1);
+                    $poolStop->setIsVisible(0);
                 } else {
                     $poolStop->setIsVisible(0);
                 }
@@ -3686,6 +4571,26 @@ class pool extends eqLogic
                 $filtrationPauseFin->setIsHistorized(0);
                 $filtrationPauseFin->save();
             }
+
+            // filtrationRecalcDate (timestamp du dernier réajustement horaire de la plage en cours)
+            {
+                $filtrationRecalcDate = $this->getCmd(null, 'filtrationRecalcDate');
+                if (!is_object($filtrationRecalcDate)) {
+                    $filtrationRecalcDate = new poolCmd();
+                    $filtrationRecalcDate->setType('info');
+                    $filtrationRecalcDate->setSubType('numeric');
+                    $filtrationRecalcDate->setValue(0);
+                }
+                $filtrationRecalcDate->setEqLogic_id($this->getId());
+                $filtrationRecalcDate->setName('filtrationRecalcDate');
+                $filtrationRecalcDate->setType('info');
+                $filtrationRecalcDate->setSubType('numeric');
+                $filtrationRecalcDate->setLogicalId('filtrationRecalcDate');
+                $filtrationRecalcDate->setIsVisible(0);
+                $filtrationRecalcDate->setOrder($order++);
+                $filtrationRecalcDate->setIsHistorized(0);
+                $filtrationRecalcDate->save();
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////
@@ -3760,7 +4665,81 @@ class pool extends eqLogic
             }
         }
 
+        // Forcer isVisible=0 sur toutes les commandes sauf le widget
+        foreach ($this->getCmd() as $cmd) {
+            if ($cmd->getLogicalId() !== 'poolWidgetData' && $cmd->getIsVisible() == 1) {
+                $cmd->setIsVisible(0);
+                $cmd->save();
+            }
+        }
+
+        // poolWidgetData — commande JSON pour le widget dashboard
+        {
+            $poolWidgetData = $this->getCmd(null, 'poolWidgetData');
+            if (!is_object($poolWidgetData)) {
+                $poolWidgetData = new poolCmd();
+                $poolWidgetData->setTemplate('dashboard', 'pool_dashboard');
+                $poolWidgetData->setTemplate('mobile', 'pool_dashboard');
+            }
+            $poolWidgetData->setEqLogic_id($this->getId());
+            $poolWidgetData->setName(__('Tableau de bord', __FILE__));
+            $poolWidgetData->setType('info');
+            $poolWidgetData->setSubType('string');
+            $poolWidgetData->setLogicalId('poolWidgetData');
+            $poolWidgetData->setIsVisible(1);
+            $poolWidgetData->setOrder(0);
+            $poolWidgetData->setIsHistorized(0);
+            $poolWidgetData->save();
+        }
+
+        // Purge des commandes héritées d'anciennes versions du plugin
+        $this->purgeObsoleteCmds();
+
         // log::add('pool', 'debug', $this->getHumanName() . 'postSave() end');
+    }
+
+    /**
+     * Supprime les commandes de l'équipement dont le logicalId n'est plus créé par
+     * le plugin (résidus d'anciennes versions). Appelée en fin de postSave().
+     *
+     * La liste de référence est AUTO-DÉRIVÉE : on extrait tous les setLogicalId('...')
+     * présents dans ce fichier source. Aucune liste à maintenir à la main → impossible
+     * de désynchroniser : tout nouveau setLogicalId('xxx') est pris en compte tout seul.
+     *
+     * Sécurités :
+     *  - si la source est illisible ou qu'aucune commande de référence n'est trouvée,
+     *    on ANNULE la purge (jamais de suppression en masse sur extraction ratée) ;
+     *  - on ne touche jamais à une commande sans logicalId (ajout manuel potentiel) ;
+     *  - chaque suppression est journalisée.
+     */
+    public function purgeObsoleteCmds()
+    {
+        $source = @file_get_contents(__FILE__);
+        if ($source === false || $source === '') {
+            log::add('pool', 'warning', $this->getHumanName() . ' purge commandes annulée : source illisible');
+            return;
+        }
+
+        $logicalIdsValides = array();
+        if (preg_match_all('/setLogicalId\(\s*[\'"]([^\'"]+)[\'"]\s*\)/', $source, $matches)) {
+            $logicalIdsValides = array_unique($matches[1]);
+        }
+
+        // Garde-fou : extraction vide => on ne purge rien
+        if (empty($logicalIdsValides)) {
+            log::add('pool', 'warning', $this->getHumanName() . ' purge commandes annulée : aucune commande de référence détectée');
+            return;
+        }
+
+        foreach ($this->getCmd() as $cmd) {
+            $logicalId = $cmd->getLogicalId();
+            // On ne touche pas aux commandes sans logicalId (ajouts manuels) ni aux commandes connues
+            if ($logicalId == '' || in_array($logicalId, $logicalIdsValides, true)) {
+                continue;
+            }
+            log::add('pool', 'info', $this->getHumanName() . ' suppression commande obsolète : ' . $logicalId . ' (#' . $cmd->getId() . '#)');
+            $cmd->remove();
+        }
     }
 
     public function preUpdate() {}
@@ -3871,9 +4850,9 @@ class poolCmd extends cmd
 
             if (is_numeric($value)) {
                 return round(floatval($value), 1);
-            } else {
-                return 10; // Valeur initiale 10.0°C si pas de configuration
             }
+            $stored = $this->getValue();
+            return is_numeric($stored) ? round(floatval($stored), 1) : 10;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////
@@ -3972,6 +4951,75 @@ class poolCmd extends cmd
 
         ///////////////////////////////////////////////////////////////////////////////////////
 
+        if ($this->getLogicalId() == 'chocFilterOn') {
+            $eqLogic->executeChocFiltrationOn();
+
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'chocFilterOff') {
+            $eqLogic->executeChocFiltrationOff();
+
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'boostOn') {
+            $duree = isset($_options['duree']) ? $_options['duree'] : null;
+            $eqLogic->executeBoostOn($duree);
+
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'boostOff') {
+            $eqLogic->executeBoostOff();
+
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'phSet') {
+            $phCmd = $eqLogic->getCmd('info', 'ph');
+            if (is_object($phCmd)) {
+                $phCmd->event(round((float)($_options['message'] ?? 0), 2));
+            }
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'orpSet') {
+            $orpCmd = $eqLogic->getCmd('info', 'orp');
+            if (is_object($orpCmd)) {
+                $orpCmd->event((int)($_options['message'] ?? 0));
+            }
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'phUpdate') {
+            $eqLogic->measureSensor('ph');
+
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'orpUpdate') {
+            $eqLogic->measureSensor('orp');
+
+            return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
         if ($this->getLogicalId() == 'asservissementActif') {
             $eqLogic->executeAsservissementActif();
 
@@ -4008,6 +5056,12 @@ class poolCmd extends cmd
             $eqLogic->executeHivernage();
 
             return '';
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////
+
+        if ($this->getLogicalId() == 'poolWidgetData') {
+            return cache::byKey('cmd' . $this->getId())->getValue();
         }
     }
 

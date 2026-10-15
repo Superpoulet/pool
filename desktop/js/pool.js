@@ -52,6 +52,24 @@ $('#bt_cronGenerator').on('click',function() {
     });
 });
 
+$('#bt_cronGenerator_temp').on('click', function() {
+    jeedom.getCronSelectModal({}, function(result) {
+        $('.eqLogicAttr[data-l1key=configuration][data-l2key=temp_trigger_cron]').value(result.value);
+    });
+});
+
+$('#bt_cronGenerator_ph').on('click', function() {
+    jeedom.getCronSelectModal({}, function(result) {
+        $('.eqLogicAttr[data-l1key=configuration][data-l2key=ph_trigger_cron]').value(result.value);
+    });
+});
+
+$('#bt_cronGenerator_orp').on('click', function() {
+    jeedom.getCronSelectModal({}, function(result) {
+        $('.eqLogicAttr[data-l1key=configuration][data-l2key=orp_trigger_cron]').value(result.value);
+    });
+});
+
 $('.addAction').on('click', function () 
 {
     addAction({}, $(this).attr('data-type'));
@@ -249,6 +267,8 @@ function saveEqLogic(_eqLogic)
 
     _eqLogic.configuration.traitementOn = $('#div_traitementOn .traitementOn').getValues('.expressionAttr');
     _eqLogic.configuration.traitementStop = $('#div_traitementStop .traitementStop').getValues('.expressionAttr');
+
+    _eqLogic.configuration.chloreDefautOn = $('#div_chloreDefautOn .chloreDefautOn').getValues('.expressionAttr');
 	
     _eqLogic.configuration.surpresseurOn = $('#div_surpresseurOn .surpresseurOn').getValues('.expressionAttr');
     _eqLogic.configuration.surpresseurStop = $('#div_surpresseurStop .surpresseurStop').getValues('.expressionAttr');
@@ -281,6 +301,8 @@ function printEqLogic(_eqLogic)
 
     $('#div_traitementOn').empty();
     $('#div_traitementStop').empty();
+
+    $('#div_chloreDefautOn').empty();
 
     $('#div_surpresseurOn').empty();
     $('#div_surpresseurStop').empty();
@@ -336,6 +358,13 @@ function printEqLogic(_eqLogic)
             for (var i in _eqLogic.configuration.traitementStop)
             {
                 addAction(_eqLogic.configuration.traitementStop[i], 'traitementStop');
+            }
+        }
+        if (isset(_eqLogic.configuration.chloreDefautOn))
+        {
+            for (var i in _eqLogic.configuration.chloreDefautOn)
+            {
+                addAction(_eqLogic.configuration.chloreDefautOn[i], 'chloreDefautOn');
             }
         }
         if (isset(_eqLogic.configuration.surpresseurOn))

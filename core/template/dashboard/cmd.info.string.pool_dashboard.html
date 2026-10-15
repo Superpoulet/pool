@@ -1,0 +1,1075 @@
+<div class="cmd pool-dashboard-widget" id="cmd#id#" data-cmd_id="#id#" data-eqlogic_id="#eqLogic_id#">
+
+  <!-- En-tête -->
+  <div class="pdw-head">
+    <span class="pdw-head-title">Piscine</span>
+    <span class="pdw-head-mode" id="pdw-mode-#uid#"></span>
+  </div>
+
+  <!-- Bandeau de mesure : la mesure (gauche) et ce que la machine en déduit (droite) -->
+  <div class="pdw-readout">
+    <div class="pdw-cell">
+      <span class="pdw-cell-label">Eau</span>
+      <div class="pdw-cell-main">
+        <span class="pdw-temp" id="pdw-temp-#uid#">--</span><span class="pdw-temp-unit">°C</span>
+      </div>
+      <span class="pdw-cell-sub" id="pdw-tempext-#uid#"></span>
+    </div>
+    <div class="pdw-cell">
+      <span class="pdw-cell-label">Filtration</span>
+      <div class="pdw-cell-main">
+        <span class="pdw-duree" id="pdw-ft-#uid#">--</span>
+      </div>
+      <span class="pdw-cell-sub" id="pdw-calc-#uid#"></span>
+    </div>
+  </div>
+
+  <!-- Frise 24 h : créneaux calculés du jour + position courante -->
+  <div class="pdw-tl">
+    <div class="pdw-tl-plot">
+      <div class="pdw-tl-track" id="pdw-tl-#uid#"></div>
+      <div class="pdw-tl-trt" id="pdw-tltrt-#uid#"></div>
+      <div class="pdw-tl-now" id="pdw-tlnow-#uid#" style="display:none"></div>
+    </div>
+    <div class="pdw-tl-scale">
+      <span style="left:0%;transform:translateX(0)">0h</span>
+      <span style="left:25%">6h</span>
+      <span style="left:50%">12h</span>
+      <span style="left:75%">18h</span>
+      <span style="left:100%;transform:translateX(-100%)">24h</span>
+    </div>
+    <div class="pdw-tl-legend" id="pdw-sched-#uid#"></div>
+    <div class="pdw-tl-legend pdw-tl-legend-trt" id="pdw-sched-trt-#uid#" style="display:none"></div>
+  </div>
+
+  <!-- Bandeau lavage filtre à sable (injecté dynamiquement) -->
+  <div id="pdw-lavage-#uid#"></div>
+
+  <!-- Voyants d'état -->
+  <div class="pdw-lamps">
+    <div class="pdw-lamp-item pdw-off" id="pdw-s-filtration-#uid#">
+      <span class="pdw-lamp"></span><span>Filtration</span>
+    </div>
+    <div class="pdw-lamp-item pdw-off" id="pdw-s-chauffage-#uid#">
+      <span class="pdw-lamp"></span><span>Chauffage</span>
+    </div>
+    <div class="pdw-lamp-item pdw-off" id="pdw-s-traitement-#uid#">
+      <span class="pdw-lamp"></span><span>Traitement</span>
+    </div>
+    <div class="pdw-lamp-item pdw-off" id="pdw-s-surpresseur-#uid#">
+      <span class="pdw-lamp"></span><span>Robot</span>
+    </div>
+  </div>
+
+  <!-- Qualité de l'eau -->
+  <div class="pdw-quality" id="pdw-info-quality-#uid#" style="display:none">
+    <div class="pdw-quality-cell" id="pdw-info-ph-#uid#">
+      <span class="pdw-quality-label">pH</span>
+      <span class="pdw-quality-val" id="pdw-ph-#uid#">--</span>
+      <button type="button" class="pdw-mini-btn" id="pdw-ph-refresh-#uid#" title="Mesurer le pH maintenant" style="display:none">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+    <div class="pdw-quality-cell" id="pdw-info-orp-#uid#">
+      <span class="pdw-quality-label">ORP</span>
+      <span class="pdw-quality-val" id="pdw-orp-#uid#">--</span>
+      <button type="button" class="pdw-mini-btn" id="pdw-orp-refresh-#uid#" title="Mesurer l'ORP maintenant" style="display:none">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="pdw-actions" id="pdw-actions-#uid#"></div>
+
+</div>
+
+<script>
+if (!document.getElementById('pool-dashboard-widget-css')) {
+  var _pdwStyle = document.createElement('style');
+  _pdwStyle.id = 'pool-dashboard-widget-css';
+  _pdwStyle.innerHTML = [
+    '.pool-dashboard-widget {',
+    '  --pdw-shell: #1a1e23;',
+    '  --pdw-surface: #22272d;',
+    '  --pdw-rule: rgba(255,255,255,0.09);',
+    '  --pdw-ink: #e9edf0;',
+    '  --pdw-ink-mid: rgba(233,237,240,0.62);',
+    '  --pdw-ink-dim: rgba(233,237,240,0.36);',
+    '  --pdw-aqua: #3fd2c7;',
+    /* Opaque, et non translucide : sinon les graduations transparaissent à travers */
+    /* le créneau à venir et le font lire comme deux créneaux séparés. */
+    '  --pdw-aqua-ghost: #2c5f5e;',
+    '  --pdw-amber: #f2a93b;',
+    '  --pdw-red: #e5484d;',
+    '  --pdw-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;',
+    '  --pdw-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;',
+    '  background: var(--pdw-shell);',
+    '  border: 1px solid rgba(255,255,255,0.06);',
+    '  border-radius: 14px;',
+    '  overflow: hidden;',
+    '  position: relative;',
+    '  width: 100%;',
+    '  min-width: 260px;',
+    '  max-width: 340px;',
+    '  color: var(--pdw-ink);',
+    '  font-family: var(--pdw-sans);',
+    '  box-shadow: 0 6px 24px rgba(0,0,0,0.35);',
+    '  user-select: none;',
+    '}',
+    '.pool-dashboard-widget *, .pool-dashboard-widget *::before, .pool-dashboard-widget *::after { box-sizing: border-box; }',
+
+    '.pdw-head {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  justify-content: space-between;',
+    '  gap: 8px;',
+    '  padding: 11px 14px 9px;',
+    '}',
+    '.pdw-head-title {',
+    '  font-size: 10px;',
+    '  font-weight: 700;',
+    '  letter-spacing: 0.16em;',
+    '  text-transform: uppercase;',
+    '  color: var(--pdw-ink-dim);',
+    '}',
+    '.pdw-mode-badge {',
+    '  display: inline-block;',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 9px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.05em;',
+    '  text-transform: uppercase;',
+    '  padding: 3px 7px;',
+    '  border-radius: 4px;',
+    '  border: 1px solid currentColor;',
+    '  white-space: nowrap;',
+    '}',
+    '.pdw-badge-normal    { color: var(--pdw-ink-mid); }',
+    '.pdw-badge-hivernage { color: var(--pdw-ink-mid); }',
+    '.pdw-badge-forcee    { color: var(--pdw-amber); }',
+    '.pdw-badge-arret     { color: var(--pdw-red); }',
+    '.pdw-badge-sfx { color: var(--pdw-amber); }',
+
+    '.pdw-readout {',
+    '  display: grid;',
+    '  grid-template-columns: 1fr 1px 1fr;',
+    '  align-items: start;',
+    '  padding: 2px 14px 12px;',
+    '}',
+    /* Colonnes assignées explicitement : le ::before de la règle est le premier enfant, */
+    /* et le placement auto (sparse) décalerait les cellules d'une colonne puis d'une ligne. */
+    '.pdw-readout::before {',
+    '  content: "";',
+    '  grid-column: 2;',
+    '  grid-row: 1;',
+    '  align-self: stretch;',
+    '  background: var(--pdw-rule);',
+    '}',
+    '.pdw-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }',
+    '.pdw-cell:nth-child(1) { grid-column: 1; grid-row: 1; padding-right: 12px; }',
+    '.pdw-cell:nth-child(2) { grid-column: 3; grid-row: 1; padding-left: 12px; }',
+    '.pdw-cell-label {',
+    '  font-size: 8px;',
+    '  font-weight: 700;',
+    '  letter-spacing: 0.14em;',
+    '  text-transform: uppercase;',
+    '  color: var(--pdw-ink-dim);',
+    '}',
+    /* Hauteur fixée : les deux colonnes sont des cellules de grille distinctes, l'alignement */
+    /* des lignes de base ne les traverse pas. Sans ça, les sous-lignes se décalent. */
+    '.pdw-cell-main { display: flex; align-items: baseline; gap: 1px; line-height: 1; min-height: 32px; }',
+    '.pdw-temp {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 32px;',
+    '  font-weight: 400;',
+    '  letter-spacing: -0.04em;',
+    '  color: var(--pdw-ink);',
+    '  font-variant-numeric: tabular-nums;',
+    '}',
+    '.pdw-temp-unit {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 13px;',
+    '  color: var(--pdw-ink-dim);',
+    '}',
+    '.pdw-duree {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 21px;',
+    '  font-weight: 400;',
+    '  letter-spacing: -0.02em;',
+    '  color: var(--pdw-ink);',
+    '  font-variant-numeric: tabular-nums;',
+    '  padding-top: 9px;',
+    '}',
+    '.pdw-cell-sub {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 9.5px;',
+    '  color: var(--pdw-ink-dim);',
+    '  letter-spacing: -0.01em;',
+    '  margin-top: 3px;',
+    '  white-space: nowrap;',
+    '  overflow: hidden;',
+    '  text-overflow: ellipsis;',
+    '}',
+
+    '.pdw-tl { padding: 0 14px 11px; }',
+    '.pdw-tl-plot { position: relative; }',
+    '.pdw-tl-track {',
+    '  position: relative;',
+    '  height: 18px;',
+    '  border-radius: 3px;',
+    '  background: var(--pdw-surface);',
+    '  overflow: hidden;',
+    '}',
+    '.pdw-tl-tick {',
+    '  position: absolute;',
+    '  top: 0; bottom: 0;',
+    '  width: 1px;',
+    '  background: rgba(0,0,0,0.35);',
+    '}',
+    '.pdw-tl-band {',
+    '  position: absolute;',
+    '  top: 0; bottom: 0;',
+    '  background: var(--pdw-aqua-ghost);',
+    '  border-radius: 2px;',
+    '}',
+    '.pdw-tl-band-done {',
+    '  position: absolute;',
+    '  top: 0; bottom: 0;',
+    '  background: var(--pdw-aqua);',
+    '  border-radius: 2px;',
+    '}',
+    /* Le traitement se déroule dans la filtration : son liseré souligne la piste, sans flotter */
+    '.pdw-tl-trt {',
+    '  position: relative;',
+    '  height: 3px;',
+    '  margin-top: 1px;',
+    '  border-radius: 2px;',
+    '}',
+    '.pdw-tl-trt-band {',
+    '  position: absolute;',
+    '  top: 0; bottom: 0;',
+    '  background: var(--pdw-ink-dim);',
+    '  border-radius: 2px;',
+    '}',
+    '.pdw-tl-now {',
+    '  position: absolute;',
+    '  top: -3px; bottom: -3px;',
+    '  width: 1.5px;',
+    '  margin-left: -0.75px;',
+    '  background: var(--pdw-ink);',
+    '  pointer-events: none;',
+    '}',
+    '.pdw-tl-now::before {',
+    '  content: "";',
+    '  position: absolute;',
+    '  top: -2px; left: 50%;',
+    '  width: 4px; height: 4px;',
+    '  margin-left: -2px;',
+    '  border-radius: 50%;',
+    '  background: var(--pdw-ink);',
+    '}',
+    '.pdw-tl-scale {',
+    '  position: relative;',
+    '  height: 12px;',
+    '  margin-top: 5px;',
+    '}',
+    '.pdw-tl-scale span {',
+    '  position: absolute;',
+    '  top: 0;',
+    '  transform: translateX(-50%);',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 8px;',
+    '  color: var(--pdw-ink-dim);',
+    '}',
+    '.pdw-tl-legend {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 10px;',
+    '  color: var(--pdw-ink-mid);',
+    '  letter-spacing: -0.01em;',
+    '  margin-top: 1px;',
+    '}',
+    '.pdw-tl-legend-trt { color: var(--pdw-ink-dim); margin-top: 2px; }',
+    '.pdw-tl-legend-trt::before {',
+    '  content: "";',
+    '  display: inline-block;',
+    '  width: 10px; height: 3px;',
+    '  border-radius: 2px;',
+    '  background: var(--pdw-ink-dim);',
+    '  vertical-align: middle;',
+    '  margin-right: 5px;',
+    '}',
+
+    '.pdw-lavage {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  justify-content: space-between;',
+    '  gap: 8px;',
+    '  padding: 7px 14px 7px 11px;',
+    '  border-top: 1px solid var(--pdw-rule);',
+    '  border-bottom: 1px solid var(--pdw-rule);',
+    '  border-left: 3px solid var(--pdw-aqua);',
+    '  background: rgba(63,210,199,0.06);',
+    '}',
+    '.pdw-lavage-label {',
+    '  font-size: 9px;',
+    '  font-weight: 700;',
+    '  letter-spacing: 0.12em;',
+    '  text-transform: uppercase;',
+    '  color: var(--pdw-aqua);',
+    '}',
+    '.pdw-lavage-val {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 11px;',
+    '  color: var(--pdw-ink);',
+    '  font-variant-numeric: tabular-nums;',
+    '}',
+
+    '.pdw-lamps {',
+    '  display: grid;',
+    '  grid-template-columns: 1fr 1fr;',
+    '  gap: 7px 10px;',
+    '  padding: 11px 14px;',
+    '  border-top: 1px solid var(--pdw-rule);',
+    '}',
+    '.pdw-lamp-item {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  gap: 7px;',
+    '  font-size: 9px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.09em;',
+    '  text-transform: uppercase;',
+    '  min-width: 0;',
+    '}',
+    '.pdw-lamp {',
+    '  width: 8px; height: 8px;',
+    '  border-radius: 2px;',
+    '  flex-shrink: 0;',
+    '}',
+    '.pdw-off { color: var(--pdw-ink-dim); }',
+    '.pdw-off .pdw-lamp { background: rgba(255,255,255,0.10); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }',
+    '.pdw-on { color: var(--pdw-ink-mid); }',
+    '.pdw-on .pdw-lamp { background: var(--pdw-aqua); }',
+    '.pdw-alert { color: var(--pdw-red); }',
+    '.pdw-alert .pdw-lamp { background: var(--pdw-red); animation: pdw-blink 1.4s steps(1, end) infinite; }',
+    '@keyframes pdw-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.25; } }',
+
+    '.pdw-quality {',
+    '  display: grid;',
+    '  grid-template-columns: 1fr 1px 1fr;',
+    '  align-items: center;',
+    '  padding: 9px 14px;',
+    '  border-top: 1px solid var(--pdw-rule);',
+    '}',
+    '.pdw-quality::before {',
+    '  content: "";',
+    '  grid-column: 2;',
+    '  grid-row: 1;',
+    '  align-self: stretch;',
+    '  background: var(--pdw-rule);',
+    '}',
+    '.pdw-quality-cell { display: flex; align-items: center; gap: 7px; min-width: 0; }',
+    '.pdw-quality-cell:nth-child(1) { grid-column: 1; grid-row: 1; padding-right: 12px; }',
+    '.pdw-quality-cell:nth-child(2) { grid-column: 3; grid-row: 1; padding-left: 12px; }',
+    '.pdw-quality-label {',
+    '  font-size: 8px;',
+    '  font-weight: 700;',
+    '  letter-spacing: 0.12em;',
+    '  text-transform: uppercase;',
+    '  color: var(--pdw-ink-dim);',
+    '}',
+    '.pdw-quality-val {',
+    '  font-family: var(--pdw-mono);',
+    '  font-size: 12px;',
+    '  color: var(--pdw-ink);',
+    '  font-variant-numeric: tabular-nums;',
+    '  margin-left: auto;',
+    '  white-space: nowrap;',
+    '}',
+    '.pdw-mini-btn {',
+    '  display: inline-flex;',
+    '  align-items: center;',
+    '  justify-content: center;',
+    '  width: 20px; height: 20px;',
+    '  padding: 0;',
+    '  flex-shrink: 0;',
+    '  border-radius: 4px;',
+    '  border: 1px solid var(--pdw-rule);',
+    '  background: transparent;',
+    '  color: var(--pdw-ink-dim);',
+    '  cursor: pointer;',
+    '  transition: color 0.15s ease, border-color 0.15s ease;',
+    '}',
+    '.pdw-mini-btn svg { width: 10px; height: 10px; }',
+    '.pdw-mini-btn:hover { color: var(--pdw-ink); border-color: var(--pdw-ink-dim); }',
+    '.pdw-mini-btn.pdw-spin svg { animation: pdw-spin 0.8s linear infinite; }',
+    '@keyframes pdw-spin { to { transform: rotate(360deg); } }',
+
+    '.pdw-actions {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  gap: 8px;',
+    '  padding: 11px 14px 13px;',
+    '  border-top: 1px solid var(--pdw-rule);',
+    '}',
+    '.pdw-actions:empty { display: none; }',
+    '.pdw-actions-row {',
+    '  display: flex;',
+    '  flex-wrap: wrap;',
+    '  gap: 6px;',
+    '}',
+    '.pdw-btn {',
+    '  display: inline-flex;',
+    '  align-items: center;',
+    '  justify-content: center;',
+    '  min-height: 30px;',
+    '  padding: 0 11px;',
+    '  border-radius: 6px;',
+    '  border: 1px solid var(--pdw-rule);',
+    '  background: transparent;',
+    '  color: var(--pdw-ink-mid);',
+    '  font-family: var(--pdw-sans);',
+    '  font-size: 10px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.06em;',
+    '  text-transform: uppercase;',
+    '  cursor: pointer;',
+    '  white-space: nowrap;',
+    '  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;',
+    '  -webkit-tap-highlight-color: transparent;',
+    '}',
+    '.pdw-btn:hover { color: var(--pdw-ink); border-color: var(--pdw-ink-dim); background: rgba(255,255,255,0.04); }',
+    '.pdw-btn-warn { color: var(--pdw-amber); border-color: rgba(242,169,59,0.35); }',
+    '.pdw-btn-warn:hover { color: var(--pdw-amber); border-color: var(--pdw-amber); background: rgba(242,169,59,0.10); }',
+    '.pdw-btn-danger { color: var(--pdw-red); border-color: rgba(229,72,77,0.35); }',
+    '.pdw-btn-danger:hover { color: var(--pdw-red); border-color: var(--pdw-red); background: rgba(229,72,77,0.10); }',
+    '.pdw-boost-wrap { display: flex; }',
+    '.pdw-boost-wrap .pdw-btn { border-radius: 6px 0 0 6px; border-right-width: 0; }',
+    '.pdw-boost-duree {',
+    '  -webkit-appearance: none;',
+    '  -moz-appearance: none;',
+    '  appearance: none;',
+    '  height: 30px;',
+    '  min-width: 62px;',
+    '  border-radius: 0 6px 6px 0;',
+    '  border: 1px solid rgba(242,169,59,0.35);',
+    '  border-left: 1px solid rgba(242,169,59,0.25);',
+    '  background-color: transparent;',
+    '  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2010%206%22%3E%3Cpath%20d%3D%22M1%201l4%204%204-4%22%20fill%3D%22none%22%20stroke%3D%22%23f2a93b%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E");',
+    '  background-repeat: no-repeat;',
+    '  background-position: right 7px center;',
+    '  background-size: 8px 5px;',
+    '  color: var(--pdw-amber);',
+    '  font-family: var(--pdw-sans);',
+    '  font-size: 10px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.05em;',
+    '  text-transform: uppercase;',
+    '  text-align: center;',
+    '  text-align-last: center;',
+    '  padding: 0 18px 0 9px;',
+    '  cursor: pointer;',
+    '  outline: none;',
+    '}',
+    '.pdw-boost-duree:hover { border-color: var(--pdw-amber); background-color: rgba(242,169,59,0.10); }',
+    '.pdw-boost-duree option { color: #222; background: #fff; }',
+    '.pdw-seg {',
+    '  display: flex;',
+    '  border: 1px solid var(--pdw-rule);',
+    '  border-radius: 6px;',
+    '  overflow: hidden;',
+    '}',
+    '.pdw-seg-btn {',
+    '  flex: 1 1 0;',
+    '  min-height: 30px;',
+    '  padding: 0 6px;',
+    '  border: 0;',
+    '  border-left: 1px solid var(--pdw-rule);',
+    '  background: transparent;',
+    '  color: var(--pdw-ink-dim);',
+    '  font-family: var(--pdw-sans);',
+    '  font-size: 10px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.06em;',
+    '  text-transform: uppercase;',
+    '  cursor: pointer;',
+    '  transition: color 0.15s ease, background 0.15s ease;',
+    '  -webkit-tap-highlight-color: transparent;',
+    '}',
+    '.pdw-seg-btn:first-child { border-left: 0; }',
+    '.pdw-seg-btn:hover { color: var(--pdw-ink); background: rgba(255,255,255,0.04); }',
+    '.pdw-seg-btn.pdw-seg-on { background: var(--pdw-ink); color: var(--pdw-shell); }',
+    '.pdw-seg-btn.pdw-seg-on:hover { background: var(--pdw-ink); color: var(--pdw-shell); }',
+    '.pdw-seg-btn.pdw-seg-on-red { background: var(--pdw-red); color: #fff; }',
+    '.pdw-seg-btn.pdw-seg-on-red:hover { background: var(--pdw-red); color: #fff; }',
+
+    '.pool-dashboard-widget button:focus-visible, .pool-dashboard-widget select:focus-visible {',
+    '  outline: 2px solid var(--pdw-aqua);',
+    '  outline-offset: 2px;',
+    '}',
+    '@media (prefers-reduced-motion: reduce) {',
+    '  .pool-dashboard-widget *, .pool-dashboard-widget *::before {',
+    '    animation: none !important;',
+    '    transition: none !important;',
+    '  }',
+    '}'
+  ].join('');
+  document.head.appendChild(_pdwStyle);
+}
+</script>
+
+<script>
+(function () {
+  var uid      = '#uid#';
+  var cmdId    = '#id#';
+  var eqId     = '#eqLogic_id#';
+  var rawValue = '#value#';
+
+  function parseData(raw) {
+    try { return JSON.parse(raw || '{}'); } catch (e) { return {}; }
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  // Recharge les données du widget (commande agrégateur) et redessine
+  function refreshWidgetData() {
+    $.ajax({
+      type: 'POST',
+      url: 'core/ajax/cmd.ajax.php',
+      data: { action: 'execCmd', id: cmdId },
+      dataType: 'json',
+      success: function (data) {
+        if (data && data.state === 'ok' && data.result) {
+          render(parseData(data.result));
+        }
+      }
+    });
+  }
+
+  // Branche un bouton de mise à jour manuelle (pH / ORP) sur sa commande action
+  function bindRefreshBtn(elId, actionId) {
+    var btn = document.getElementById(elId);
+    if (!btn) return;
+    if (!actionId) { btn.style.display = 'none'; return; }
+    btn.style.display = 'inline-flex';
+    btn.onclick = function (e) {
+      e.stopPropagation();
+      if (typeof jeedom === 'undefined' || !jeedom.cmd || !jeedom.cmd.execute) return;
+      btn.classList.add('pdw-spin');
+      jeedom.cmd.execute({ id: actionId });
+      setTimeout(function () {
+        refreshWidgetData();
+        btn.classList.remove('pdw-spin');
+      }, 1500);
+    };
+  }
+
+  // --- Frise 24 h ---------------------------------------------------------
+  // filtrationSchedule arrive en texte, sous trois formes :
+  //   "10:00-12:30 15:00-19:00 : 24°C"  (avec pause pivot)
+  //   "10:00-19:00 : 24°C"              (sans pause)
+  //   "* 11:00 <> 14:00 : 5°C"          (hivernage)
+  // On ne lit que les heures, par paires : les trois formes se parsent pareil.
+  var _nowInterval = null;
+
+  function toMin(t) {
+    var p = t.split(':');
+    return (parseInt(p[0], 10) * 60) + parseInt(p[1], 10);
+  }
+
+  function parseSchedule(s) {
+    var out = { spans: [], calc: null };
+    if (!s) return out;
+    var m = String(s).match(/([\d.,]+)\s*°C\s*$/);
+    if (m) out.calc = m[1].replace(',', '.');
+    var times = String(s).match(/\d{1,2}:\d{2}/g) || [];
+    for (var i = 0; i + 1 < times.length; i += 2) {
+      out.spans.push([toMin(times[i]), toMin(times[i + 1])]);
+    }
+    return out;
+  }
+
+  // Un créneau qui franchit minuit est coupé en deux morceaux affichables
+  function toRects(span) {
+    var a = span[0], b = span[1];
+    if (a === b) return [];
+    if (b > a) return [[a, b]];
+    return [[a, 1440], [0, b]];
+  }
+
+  function pct(min) { return (min / 1440 * 100); }
+
+  function fmtHM(min) {
+    var h = Math.floor(min / 60) % 24, m = min % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  function nowMin() {
+    var d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+
+  function placeNeedle() {
+    var el = document.getElementById('pdw-tlnow-' + uid);
+    if (!el) {
+      // Le widget a été re-rendu (uid obsolète) : on arrête ce timer orphelin
+      if (_nowInterval) { clearInterval(_nowInterval); _nowInterval = null; }
+      return;
+    }
+    el.style.display = '';
+    el.style.left = pct(nowMin()).toFixed(3) + '%';
+  }
+
+  function renderTimeline(d) {
+    var track = document.getElementById('pdw-tl-' + uid);
+    var trt   = document.getElementById('pdw-tltrt-' + uid);
+    if (!track) return;
+
+    var sched = parseSchedule(d.filtrationSchedule);
+    var now   = nowMin();
+    var html  = '';
+
+    // Graduations toutes les 6 h
+    [25, 50, 75].forEach(function (p) {
+      html += '<span class="pdw-tl-tick" style="left:' + p + '%"></span>';
+    });
+
+    // Créneaux : le prévu en aqua fantôme, l'écoulé en aqua plein
+    sched.spans.forEach(function (span) {
+      toRects(span).forEach(function (r) {
+        var a = r[0], b = r[1];
+        html += '<span class="pdw-tl-band" style="left:' + pct(a).toFixed(3) + '%;width:' +
+                (pct(b) - pct(a)).toFixed(3) + '%"></span>';
+        if (now > a) {
+          var end = Math.min(now, b);
+          html += '<span class="pdw-tl-band-done" style="left:' + pct(a).toFixed(3) + '%;width:' +
+                  (pct(end) - pct(a)).toFixed(3) + '%"></span>';
+        }
+      });
+    });
+    track.innerHTML = html;
+
+    // Traitement : liseré sous la piste, même échelle
+    var trtSched = parseSchedule(d.traitementSchedule);
+    if (trt) {
+      var th = '';
+      trtSched.spans.forEach(function (span) {
+        toRects(span).forEach(function (r) {
+          th += '<span class="pdw-tl-trt-band" style="left:' + pct(r[0]).toFixed(3) + '%;width:' +
+                (pct(r[1]) - pct(r[0])).toFixed(3) + '%"></span>';
+        });
+      });
+      trt.innerHTML = th;
+    }
+
+    // Légende : les créneaux en clair, reformatés depuis les heures parsées
+    var legEl = document.getElementById('pdw-sched-' + uid);
+    if (legEl) {
+      legEl.textContent = sched.spans.map(function (s) {
+        return fmtHM(s[0]) + '–' + fmtHM(s[1]);
+      }).join('  ·  ');
+    }
+
+    var legTrtEl = document.getElementById('pdw-sched-trt-' + uid);
+    if (legTrtEl) {
+      if (trtSched.spans.length) {
+        legTrtEl.textContent = 'Traitement  ' + trtSched.spans.map(function (s) {
+          return fmtHM(s[0]) + '–' + fmtHM(s[1]);
+        }).join('  ·  ');
+        legTrtEl.style.display = '';
+      } else {
+        legTrtEl.style.display = 'none';
+      }
+    }
+
+    // Température ayant servi au calcul : c'est elle qui explique la durée
+    var calcEl = document.getElementById('pdw-calc-' + uid);
+    if (calcEl) calcEl.textContent = sched.calc ? 'calculé à ' + sched.calc + ' °C' : '';
+
+    placeNeedle();
+    if (!_nowInterval) {
+      _nowInterval = setInterval(placeNeedle, 30000);
+    }
+  }
+
+  // --- Lavage filtre à sable ---------------------------------------------
+  var _lavageInterval = null;
+  var _lavageData = {};
+  var _lastActSig  = null;
+
+  function lavageLabel() {
+    var etat = parseInt(_lavageData.lavageEtat) || 0;
+    var ts   = parseInt(_lavageData.lavageTimestamp) || 0;
+    // États de transition statiques
+    if (etat === 1 || etat === 3 || etat === 5) {
+      return _lavageData.lavageStatus || '';
+    }
+    // États avec timer
+    if ((etat === 2 || etat === 4) && ts > 0) {
+      var restant = ts - Math.floor(Date.now() / 1000);
+      if (restant > 0) {
+        var mm = Math.floor(restant / 60);
+        var ss = restant % 60;
+        var prefix = etat === 2 ? 'Lavage' : 'Rinçage';
+        return prefix + ' ' + (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+      }
+      // Timer expiré : afficher la prochaine étape en attendant le cron
+      return etat === 2 ? 'Arrêt, position rinçage' : 'Arrêt, position filtration';
+    }
+    return _lavageData.lavageStatus || '';
+  }
+
+  function renderLavage() {
+    var wrap = document.getElementById('pdw-lavage-' + uid);
+    if (!wrap) return;
+    var etat = parseInt(_lavageData.lavageEtat) || 0;
+    if (etat > 0) {
+      wrap.innerHTML =
+        '<div class="pdw-lavage">' +
+        '<span class="pdw-lavage-label">Filtre à sable</span>' +
+        '<span class="pdw-lavage-val" id="pdw-lavage-lbl-' + uid + '">' + esc(lavageLabel()) + '</span>' +
+        '</div>';
+    } else {
+      wrap.innerHTML = '';
+    }
+  }
+
+  function updateLavage(d) {
+    var prevEtat = parseInt(_lavageData.lavageEtat) || 0;
+    var newEtat  = parseInt(d.lavageEtat) || 0;
+    _lavageData = d;
+    if (newEtat !== prevEtat) {
+      if (_lavageInterval) { clearInterval(_lavageInterval); _lavageInterval = null; }
+      renderLavage();
+      if (newEtat === 2 || newEtat === 4) {
+        _lavageInterval = setInterval(function () {
+          var lbl = document.getElementById('pdw-lavage-lbl-' + uid);
+          if (lbl) { lbl.textContent = lavageLabel(); }
+          else { clearInterval(_lavageInterval); _lavageInterval = null; }
+        }, 1000);
+      }
+    }
+    // Même état : le setInterval existant continue de décompter avec Date.now()
+  }
+
+  // --- Mode boost : décompte avant coupure automatique ---
+  var _boostInterval = null;
+  var _boostData = {};
+  // durée choisie dans le select : persistée entre re-renders ET rechargements (localStorage)
+  var _boostDureeSel = '';
+  try { _boostDureeSel = localStorage.getItem('pdw_boost_duree_' + cmdId) || ''; } catch (e) {}
+
+  function boostLabel() {
+    var fin = parseInt(_boostData.boostFin) || 0;
+    if (fin <= 0) return 'Boost'; // illimité
+    var restant = fin - Math.floor(Date.now() / 1000);
+    if (restant <= 0) return 'Boost';
+    var p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    var hh = Math.floor(restant / 3600);
+    var mm = Math.floor((restant % 3600) / 60);
+    var ss = restant % 60;
+    var reste = (hh > 0 ? hh + ':' + p2(mm) + ':' + p2(ss) : p2(mm) + ':' + p2(ss));
+    // Rappel de l'heure de coupure automatique (dérivée de boostFin, survit au rechargement)
+    var dFin = new Date(fin * 1000);
+    return 'Boost ' + reste + ' → ' + p2(dFin.getHours()) + ':' + p2(dFin.getMinutes());
+  }
+
+  function updateBoost(d) {
+    _boostData = d;
+    if (_boostInterval) { clearInterval(_boostInterval); _boostInterval = null; }
+    if (parseInt(d.boost) === 1 && (parseInt(d.boostFin) || 0) > 0) {
+      _boostInterval = setInterval(function () {
+        var sfx = document.getElementById('pdw-boost-sfx-' + uid);
+        if (sfx) { sfx.textContent = boostLabel(); }
+        else { clearInterval(_boostInterval); _boostInterval = null; }
+      }, 1000);
+    }
+  }
+
+  function setStatus(name, state, visible) {
+    var el = document.getElementById('pdw-s-' + name + '-' + uid);
+    if (!el) return;
+    var display = (visible === false) ? 'none' : '';
+    if (el.style.display !== display) el.style.display = display;
+    var cls = 'pdw-lamp-item ' + state;
+    if (el.className !== cls) el.className = cls;
+  }
+
+  // "04:30" -> "4 h 30"
+  function fmtDuree(t) {
+    if (!t) return '--';
+    var m = String(t).match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return String(t);
+    var h = parseInt(m[1], 10), mn = m[2];
+    if (h === 0 && mn === '00') return '--';
+    return h + ' h ' + mn;
+  }
+
+  function render(d) {
+    // Température de l'eau
+    var tempEl = document.getElementById('pdw-temp-' + uid);
+    if (tempEl) {
+      tempEl.textContent = (d.temp !== undefined && d.temp !== null && d.temp !== '')
+        ? parseFloat(d.temp).toFixed(1) : '--';
+    }
+
+    // Température extérieure + max eau du jour
+    var extEl = document.getElementById('pdw-tempext-' + uid);
+    if (extEl) {
+      var parts = [];
+      if (d.tempOutdoor !== undefined && d.tempOutdoor !== null && d.tempOutdoor !== '') {
+        parts.push('ext ' + parseFloat(d.tempOutdoor).toFixed(1));
+      }
+      if (d.tempMax !== undefined && d.tempMax !== null && d.tempMax !== '' && parseFloat(d.tempMax) > 0) {
+        parts.push('max ' + parseFloat(d.tempMax).toFixed(1));
+      }
+      extEl.textContent = parts.join('  ·  ');
+    }
+
+    // Durée de filtration calculée pour la journée
+    var ftEl = document.getElementById('pdw-ft-' + uid);
+    if (ftEl) ftEl.textContent = fmtDuree(d.filtrationTime);
+
+    // Badge de mode — basé sur asservissementStatus
+    var modeEl = document.getElementById('pdw-mode-' + uid);
+    if (modeEl) {
+      var status = (d.asservissementStatus || '').toLowerCase();
+      var badgeClass, badgeLabel = esc(d.asservissementStatus || '');
+      if (status.indexOf('inactif') !== -1) {
+        badgeClass = 'pdw-badge-arret';
+      } else if (status.indexOf('actif') !== -1 && status.indexOf('hivernage') === -1) {
+        badgeClass = 'pdw-badge-forcee';
+      } else if (status.indexOf('hivernage') !== -1) {
+        badgeClass = 'pdw-badge-hivernage';
+      } else {
+        badgeClass = 'pdw-badge-normal';
+      }
+      // Suffixe boost ou choc si actif (boost est prioritaire visuellement)
+      updateBoost(d);
+      if (parseInt(d.boost) === 1) {
+        badgeLabel += ' · <span class="pdw-badge-sfx" id="pdw-boost-sfx-' + uid + '">' + esc(boostLabel()) + '</span>';
+      } else if (parseInt(d.filtrationChoc) === 1) {
+        badgeLabel += ' · <span class="pdw-badge-sfx">Choc</span>';
+      }
+      modeEl.innerHTML = '<span class="pdw-mode-badge ' + badgeClass + '">' + badgeLabel + '</span>';
+    }
+
+    // Frise 24 h
+    renderTimeline(d);
+
+    // Voyants — affichage conditionnel selon les features activées
+    setStatus('filtration',  parseInt(d.filtration)  === 1 ? 'pdw-on' : 'pdw-off', true);
+    setStatus('chauffage',   parseInt(d.chauffage)   === 1 ? 'pdw-on' : 'pdw-off', !!d.hasChauffage);
+    var trtState = 'pdw-off';
+    if (parseInt(d.traitement) === 1) {
+      // Si le contrôle de production est actif : alerte quand le traitement tourne sans produire
+      trtState = (d.hasChloreCheck && parseInt(d.productionChlore) === 0) ? 'pdw-alert' : 'pdw-on';
+    }
+    setStatus('traitement', trtState, !!d.hasTraitement);
+    setStatus('surpresseur', parseInt(d.surpresseur) === 1 ? 'pdw-on' : 'pdw-off', !!d.hasSurpresseur);
+
+    // Bandeau lavage avec décompte temps réel
+    updateLavage(d);
+
+    // Qualité eau : pH et ORP
+    var qualityEl = document.getElementById('pdw-info-quality-' + uid);
+    var phEl  = document.getElementById('pdw-ph-' + uid);
+    var orpEl = document.getElementById('pdw-orp-' + uid);
+    var hasPH  = d.ph  !== null && d.ph  !== undefined && d.ph  !== '';
+    var hasORP = d.orp !== null && d.orp !== undefined && d.orp !== '';
+    var canUpdate = d.actions && (d.actions.phUpdate || d.actions.orpUpdate);
+    if (qualityEl) qualityEl.style.display = (hasPH || hasORP || canUpdate) ? '' : 'none';
+    if (phEl)  phEl.textContent  = hasPH  ? parseFloat(d.ph).toFixed(1)          : '--';
+    if (orpEl) orpEl.textContent = hasORP ? Math.round(parseFloat(d.orp)) + ' mV' : '--';
+
+    // Boutons de mise à jour manuelle pH / ORP
+    bindRefreshBtn('pdw-ph-refresh-' + uid, d.actions && d.actions.phUpdate);
+    bindRefreshBtn('pdw-orp-refresh-' + uid, d.actions && d.actions.orpUpdate);
+
+    // Boutons d'action
+    buildActions(d);
+  }
+
+  function buildActions(d) {
+    if (!d.actions) return;
+    var acts = d.actions;
+    var $zone = document.getElementById('pdw-actions-' + uid);
+    if (!$zone) return;
+
+    var boostActif = parseInt(d.boost) === 1;
+    var chocActif = parseInt(d.filtrationChoc) === 1;
+    var status = (d.asservissementStatus || '').toLowerCase();
+    var modeActuel = status.indexOf('inactif') !== -1 ? 'inactif'
+                   : (status.indexOf('actif') !== -1 && status.indexOf('hivernage') === -1) ? 'actif'
+                   : 'auto';
+    var sig = (boostActif ? '1' : '0') + '|' + (chocActif ? '1' : '0') + '|' + modeActuel + '|' +
+              (acts.chocFilterOn || '') + '|' +
+              (acts.chocFilterOff || '') + '|' +
+              (acts.surpresseurOn || '') + '|' +
+              (acts.filtreSableLavageOn || '') + '|' +
+              (acts.poolStop || '') + '|' +
+              (acts.resetCalcul || '') + '|' +
+              (acts.asservissementActif || '') + '|' +
+              (acts.asservissementAuto || '') + '|' +
+              (acts.asservissementInactif || '');
+    if (sig === _lastActSig) return;
+    _lastActSig = sig;
+
+    function refreshWidget() {
+      $.ajax({
+        type: 'POST',
+        url: 'core/ajax/cmd.ajax.php',
+        data: { action: 'execCmd', id: cmdId },
+        dataType: 'json',
+        success: function (data) {
+          if (data && data.state === 'ok' && data.result) {
+            render(parseData(data.result));
+          }
+        }
+      });
+    }
+
+    function makeBtn(id, label, css) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = css;
+      b.textContent = label;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (typeof jeedom !== 'undefined' && jeedom.cmd && jeedom.cmd.execute) {
+          jeedom.cmd.execute({ id: id });
+          setTimeout(refreshWidget, 1200);
+        }
+      });
+      return b;
+    }
+
+    function makeRow(buttons) {
+      var row = document.createElement('div');
+      row.className = 'pdw-actions-row';
+      buttons.forEach(function (b) { if (b) row.appendChild(b); });
+      return row;
+    }
+
+    $zone.innerHTML = '';
+
+    // Exécute boostOn en passant la durée choisie (vide = durée par défaut de la config).
+    // Les options d'execCmd se passent par le champ `value` en JSON (cf. core/ajax/cmd.ajax.php).
+    function execBoost(id, duree) {
+      $.ajax({
+        type: 'POST',
+        url: 'core/ajax/cmd.ajax.php',
+        data: { action: 'execCmd', id: id, value: JSON.stringify({ duree: duree }) },
+        dataType: 'json',
+        complete: function () { setTimeout(refreshWidget, 1200); }
+      });
+    }
+
+    // Ligne 1 : surcharges manuelles (ambre) puis actions ponctuelles (neutres)
+    var row1 = [];
+    if (boostActif && acts.boostOff) {
+      row1.push(makeBtn(acts.boostOff, 'Stop boost', 'pdw-btn pdw-btn-danger'));
+    } else if (acts.boostOn) {
+      // Bouton Boost + sélecteur de durée avant coupure automatique
+      var boostWrap = document.createElement('div');
+      boostWrap.className = 'pdw-boost-wrap';
+
+      var boostBtn = document.createElement('button');
+      boostBtn.type = 'button';
+      boostBtn.className = 'pdw-btn pdw-btn-warn';
+      boostBtn.textContent = 'Boost';
+
+      var sel = document.createElement('select');
+      sel.className = 'pdw-boost-duree';
+      sel.title = 'Durée avant coupure automatique';
+      [['', 'Défaut'], ['0', 'Illimité'], ['0.5', '30 min'], ['1', '1 h'], ['2', '2 h'], ['4', '4 h'], ['6', '6 h'], ['12', '12 h']]
+        .forEach(function (o) {
+          var op = document.createElement('option');
+          op.value = o[0]; op.textContent = o[1];
+          sel.appendChild(op);
+        });
+      sel.value = _boostDureeSel; // restaure le choix précédent après re-render
+      sel.addEventListener('click', function (e) { e.stopPropagation(); });
+      sel.addEventListener('change', function () {
+        _boostDureeSel = sel.value;
+        try { localStorage.setItem('pdw_boost_duree_' + cmdId, sel.value); } catch (e) {}
+      });
+
+      boostBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        execBoost(acts.boostOn, sel.value);
+      });
+
+      boostWrap.appendChild(boostBtn);
+      boostWrap.appendChild(sel);
+      row1.push(boostWrap);
+    }
+    if (!boostActif && (acts.chocFilterOn || acts.chocFilterOff)) {
+      var chocId = (chocActif && acts.chocFilterOff) ? acts.chocFilterOff : acts.chocFilterOn;
+      row1.push(makeBtn(chocId,
+        chocActif ? 'Stop choc' : 'Choc',
+        chocActif ? 'pdw-btn pdw-btn-danger' : 'pdw-btn pdw-btn-warn'
+      ));
+    }
+    if (acts.filtreSableLavageOn) {
+      row1.push(makeBtn(acts.filtreSableLavageOn, 'Lavage', 'pdw-btn'));
+    }
+    if (acts.surpresseurOn) {
+      row1.push(makeBtn(acts.surpresseurOn, 'Robot', 'pdw-btn'));
+    }
+    if (acts.resetCalcul) {
+      row1.push(makeBtn(acts.resetCalcul, 'Reset', 'pdw-btn'));
+    }
+    if (row1.length) $zone.appendChild(makeRow(row1));
+
+    // Ligne 2 : modes Actif / Auto / Inactif — choix exclusif, donc contrôle segmenté
+    var hasMode = acts.asservissementActif || acts.asservissementAuto || acts.asservissementInactif;
+    if (hasMode) {
+      var seg = document.createElement('div');
+      seg.className = 'pdw-seg';
+      [['asservissementActif', 'Actif', 'actif'],
+       ['asservissementAuto', 'Auto', 'auto'],
+       ['asservissementInactif', 'Inactif', 'inactif']].forEach(function (m) {
+        if (!acts[m[0]]) return;
+        var on = (modeActuel === m[2]);
+        var css = 'pdw-seg-btn';
+        if (on) css += (m[2] === 'inactif') ? ' pdw-seg-on-red' : ' pdw-seg-on';
+        var b = makeBtn(acts[m[0]], m[1], css);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        seg.appendChild(b);
+      });
+      $zone.appendChild(seg);
+    }
+  }
+
+  // Rendu initial
+  render(parseData(rawValue));
+
+  // Mise à jour temps réel : enregistrement auprès du moteur Jeedom.
+  // Jeedom appelle cette fonction à chaque changement de la commande (événement cmd::update).
+  // addUpdateFunction dédoublonne par toString() → pas de doublon si le script est ré-exécuté.
+  (function registerUpdate() {
+    if (typeof jeedom === 'undefined' || !jeedom.cmd || typeof jeedom.cmd.addUpdateFunction !== 'function') {
+      setTimeout(registerUpdate, 100);
+      return;
+    }
+    jeedom.cmd.addUpdateFunction(cmdId, function (_options) {
+      var val = (_options && _options.value !== undefined && _options.value !== '')
+        ? _options.value
+        : (_options ? _options.display_value : '');
+      var d = parseData(val);
+      if (d && Object.keys(d).length > 0) {
+        render(d);
+      } else {
+        // Payload vide ou tronqué par l'event Jeedom (>3096 car.) : on recharge la valeur complète
+        refreshWidgetData();
+      }
+    });
+  })();
+})();
+</script>

@@ -1,0 +1,593 @@
+<div class="cmd pool-dashboard-mobile" id="cmd#id#" data-cmd_id="#id#" data-eqlogic_id="#eqLogic_id#">
+
+  <!-- En-tête -->
+  <div class="pdm-header">
+    <div class="pdm-title">
+      <svg class="pdm-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 12c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M2 17c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M7 2v5M12 2v3M17 2v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>Piscine</span>
+    </div>
+    <div id="pdm-mode-#uid#"></div>
+  </div>
+
+  <!-- Température hero -->
+  <div class="pdm-hero">
+    <div class="pdm-temp-row">
+      <div class="pdm-temp-main">
+        <span class="pdm-temp-num" id="pdm-temp-#uid#">--</span>
+        <span class="pdm-temp-unit">°C</span>
+      </div>
+      <div class="pdm-temp-ext" id="pdm-tempext-#uid#"></div>
+    </div>
+  </div>
+
+  <!-- Vagues animées -->
+  <div class="pdm-wave-container">
+    <svg class="pdm-wave" viewBox="0 24 150 28" preserveAspectRatio="none">
+      <defs>
+        <path id="pdm-gentle-wave-#uid#" d="M-160 44c30 0 58-18 88-18s58 18 88 18 58-18 88-18 58 18 88 18v44h-352z"/>
+      </defs>
+      <use href="#pdm-gentle-wave-#uid#" x="48" y="0" fill="rgba(255,255,255,0.04)"/>
+      <use href="#pdm-gentle-wave-#uid#" x="48" y="3" fill="rgba(255,255,255,0.07)"/>
+      <use href="#pdm-gentle-wave-#uid#" x="48" y="5" fill="rgba(255,255,255,0.11)"/>
+      <use href="#pdm-gentle-wave-#uid#" x="48" y="7" fill="rgba(255,255,255,0.15)"/>
+    </svg>
+  </div>
+
+  <!-- Statuts -->
+  <div class="pdm-statuses">
+    <div class="pdm-status-item pdm-off" id="pdm-s-filtration-#uid#">
+      <div class="pdm-status-icon">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+      </div>
+      <span>Filtration</span>
+    </div>
+    <div class="pdm-status-item pdm-off" id="pdm-s-chauffage-#uid#">
+      <div class="pdm-status-icon">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"/></svg>
+      </div>
+      <span>Chauffage</span>
+    </div>
+    <div class="pdm-status-item pdm-off" id="pdm-s-traitement-#uid#">
+      <div class="pdm-status-icon">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4 4C.817 14.769 2.156 18 4.828 18h10.343c2.673 0 4.012-3.231 2.122-5.121l-4-4A1 1 0 0113 8.172V4.414l.707-.707A1 1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027 1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.563-.187a1.993 1.993 0 00-.114-.035l1.063-1.063A3 3 0 009 8.172z" clip-rule="evenodd"/></svg>
+      </div>
+      <span>Traitement</span>
+    </div>
+    <div class="pdm-status-item pdm-off" id="pdm-s-surpresseur-#uid#">
+      <div class="pdm-status-icon">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/></svg>
+      </div>
+      <span>Robot</span>
+    </div>
+  </div>
+
+  <!-- Statut lavage filtre à sable -->
+  <div id="pdm-lavage-#uid#"></div>
+
+  <!-- Temps filtration / traitement + horaires -->
+  <div class="pdm-info" id="pdm-info-#uid#">
+    <div class="pdm-info-grid">
+      <div class="pdm-info-cell">
+        <span class="pdm-info-label">Filtration</span>
+        <span class="pdm-info-val" id="pdm-ft-#uid#">--:--</span>
+      </div>
+      <div class="pdm-info-cell" id="pdm-info-tt-#uid#">
+        <span class="pdm-info-label">Traitement</span>
+        <span class="pdm-info-val" id="pdm-tt-#uid#">--:--</span>
+      </div>
+    </div>
+    <div class="pdm-schedule" id="pdm-sched-#uid#"></div>
+  </div>
+
+  <!-- Boutons d'action -->
+  <div class="pdm-actions" id="pdm-actions-#uid#"></div>
+
+</div>
+
+<script>
+if (!document.getElementById('pool-dashboard-mobile-css')) {
+  var _pdmStyle = document.createElement('style');
+  _pdmStyle.id = 'pool-dashboard-mobile-css';
+  _pdmStyle.innerHTML = [
+    '.pool-dashboard-mobile {',
+    '  background: linear-gradient(155deg, #061c33 0%, #0b3461 55%, #0d5080 100%);',
+    '  border-radius: 16px;',
+    '  overflow: hidden;',
+    '  position: relative;',
+    '  width: 100%;',
+    '  color: #e8f4fd;',
+    '  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;',
+    '  box-shadow: 0 8px 32px rgba(0,60,150,0.5), inset 0 1px 0 rgba(255,255,255,0.08);',
+    '  user-select: none;',
+    '}',
+    '.pdm-header {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  align-items: flex-start;',
+    '  padding: 12px 14px 8px;',
+    '  gap: 5px;',
+    '}',
+    '.pdm-title {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  gap: 6px;',
+    '  font-size: 12px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.05em;',
+    '  text-transform: uppercase;',
+    '  opacity: 0.75;',
+    '}',
+    '.pdm-icon { width: 16px; height: 16px; color: #4fc3f7; }',
+    '.pdm-mode-badge {',
+    '  font-size: 10px;',
+    '  font-weight: 700;',
+    '  letter-spacing: 0.06em;',
+    '  text-transform: uppercase;',
+    '  padding: 3px 10px;',
+    '  border-radius: 20px;',
+    '}',
+    '.pdm-badge-normal   { background: rgba(79,195,247,0.2);  color: #4fc3f7;  border: 1px solid rgba(79,195,247,0.4); }',
+    '.pdm-badge-hivernage{ background: rgba(168,216,234,0.2); color: #a8d8ea; border: 1px solid rgba(168,216,234,0.4); }',
+    '.pdm-badge-choc     { background: rgba(246,201,14,0.2);  color: #f6c90e;  border: 1px solid rgba(246,201,14,0.4); }',
+    '.pdm-badge-forcee   { background: rgba(255,165,0,0.2);   color: #ffa500;  border: 1px solid rgba(255,165,0,0.4); }',
+    '.pdm-badge-arret    { background: rgba(255,71,87,0.2);   color: #ff4757;  border: 1px solid rgba(255,71,87,0.4); }',
+    '.pdm-hero {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  align-items: center;',
+    '  padding: 4px 16px 10px;',
+    '}',
+    '.pdm-temp-row {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  align-items: center;',
+    '  gap: 2px;',
+    '}',
+    '.pdm-temp-main {',
+    '  display: flex;',
+    '  align-items: baseline;',
+    '  gap: 4px;',
+    '  line-height: 1;',
+    '}',
+    '.pdm-temp-num {',
+    '  font-size: 46px;',
+    '  font-weight: 200;',
+    '  letter-spacing: -2px;',
+    '  color: #ffffff;',
+    '  transition: all 0.4s ease;',
+    '}',
+    '.pdm-temp-unit {',
+    '  font-size: 20px;',
+    '  font-weight: 300;',
+    '  color: rgba(255,255,255,0.6);',
+    '  margin-bottom: 4px;',
+    '}',
+    '.pdm-temp-ext {',
+    '  font-size: 11px;',
+    '  color: rgba(255,255,255,0.45);',
+    '  letter-spacing: 0.03em;',
+    '}',
+    '.pdm-wave-container {',
+    '  position: relative;',
+    '  width: 100%;',
+    '  height: 24px;',
+    '  overflow: hidden;',
+    '  margin-bottom: 2px;',
+    '}',
+    '.pdm-wave {',
+    '  position: absolute;',
+    '  bottom: 0;',
+    '  width: 200%;',
+    '  left: -50%;',
+    '}',
+    '.pdm-statuses {',
+    '  display: flex;',
+    '  justify-content: space-around;',
+    '  padding: 8px 12px;',
+    '  background: rgba(0,0,0,0.2);',
+    '}',
+    '.pdm-status-item {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  align-items: center;',
+    '  gap: 4px;',
+    '  font-size: 9px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.05em;',
+    '  text-transform: uppercase;',
+    '  transition: all 0.3s ease;',
+    '}',
+    '.pdm-status-icon {',
+    '  width: 32px;',
+    '  height: 32px;',
+    '  border-radius: 50%;',
+    '  display: flex;',
+    '  align-items: center;',
+    '  justify-content: center;',
+    '  transition: all 0.3s ease;',
+    '}',
+    '.pdm-status-icon svg { width: 15px; height: 15px; }',
+    '.pdm-off .pdm-status-icon { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.25); }',
+    '.pdm-off { color: rgba(255,255,255,0.25); }',
+    '.pdm-on .pdm-status-icon { background: rgba(79,195,247,0.2); color: #4fc3f7; box-shadow: 0 0 14px rgba(79,195,247,0.5); animation: pdm-pulse 2s ease-in-out infinite; }',
+    '.pdm-on { color: #4fc3f7; }',
+    '.pdm-on-heat .pdm-status-icon { background: rgba(255,120,0,0.2); color: #ff7800; box-shadow: 0 0 14px rgba(255,120,0,0.45); animation: pdm-pulse-heat 2s ease-in-out infinite; }',
+    '.pdm-on-heat { color: #ff9940; }',
+    '.pdm-on-green .pdm-status-icon { background: rgba(72,199,142,0.2); color: #48c78e; box-shadow: 0 0 14px rgba(72,199,142,0.45); animation: pdm-pulse-green 2s ease-in-out infinite; }',
+    '.pdm-on-green { color: #48c78e; }',
+    '@keyframes pdm-pulse      { 0%,100% { box-shadow: 0 0 8px rgba(79,195,247,0.4); } 50% { box-shadow: 0 0 20px rgba(79,195,247,0.8); } }',
+    '@keyframes pdm-pulse-heat { 0%,100% { box-shadow: 0 0 8px rgba(255,120,0,0.35); } 50% { box-shadow: 0 0 20px rgba(255,120,0,0.7); } }',
+    '@keyframes pdm-pulse-green{ 0%,100% { box-shadow: 0 0 8px rgba(72,199,142,0.35); } 50% { box-shadow: 0 0 20px rgba(72,199,142,0.7); } }',
+    '.pdm-lavage {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  gap: 8px;',
+    '  padding: 7px 14px;',
+    '  background: rgba(72,199,142,0.1);',
+    '  border-top: 1px solid rgba(72,199,142,0.2);',
+    '  font-size: 11px;',
+    '  font-weight: 600;',
+    '  color: #48c78e;',
+    '  letter-spacing: 0.03em;',
+    '  animation: pdm-pulse-green 2s ease-in-out infinite;',
+    '}',
+    '.pdm-lavage svg { width: 13px; height: 13px; flex-shrink: 0; }',
+    '.pdm-info {',
+    '  padding: 8px 14px 7px;',
+    '  background: rgba(0,0,0,0.12);',
+    '  border-top: 1px solid rgba(255,255,255,0.05);',
+    '}',
+    '.pdm-info-grid {',
+    '  display: grid;',
+    '  grid-template-columns: 1fr 1fr;',
+    '  gap: 8px;',
+    '  margin-bottom: 5px;',
+    '}',
+    '.pdm-info-cell {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  gap: 2px;',
+    '}',
+    '.pdm-info-label {',
+    '  font-size: 8px;',
+    '  font-weight: 700;',
+    '  text-transform: uppercase;',
+    '  letter-spacing: 0.06em;',
+    '  color: rgba(255,255,255,0.35);',
+    '}',
+    '.pdm-info-val {',
+    '  font-size: 16px;',
+    '  font-weight: 200;',
+    '  color: rgba(255,255,255,0.85);',
+    '  letter-spacing: 0.01em;',
+    '}',
+    '.pdm-schedule {',
+    '  font-size: 10px;',
+    '  color: rgba(255,255,255,0.4);',
+    '  text-align: center;',
+    '  letter-spacing: 0.03em;',
+    '}',
+    '.pdm-actions {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  gap: 6px;',
+    '  padding: 8px 12px 12px;',
+    '  background: rgba(0,0,0,0.15);',
+    '}',
+    '.pdm-actions-row {',
+    '  display: flex;',
+    '  gap: 6px;',
+    '  width: 100%;',
+    '}',
+    '.pdm-actions-row .pdm-btn { flex: 1; }',
+    '.pdm-btn {',
+    '  display: flex;',
+    '  align-items: center;',
+    '  justify-content: center;',
+    '  gap: 5px;',
+    '  padding: 5px 12px;',
+    '  border-radius: 20px;',
+    '  border: 1px solid rgba(79,195,247,0.3);',
+    '  background: rgba(79,195,247,0.1);',
+    '  color: #4fc3f7;',
+    '  font-size: 10px;',
+    '  font-weight: 600;',
+    '  letter-spacing: 0.04em;',
+    '  text-transform: uppercase;',
+    '  cursor: pointer;',
+    '  font-family: inherit;',
+    '  min-height: 36px;',
+    '  transition: all 0.2s ease;',
+    '  -webkit-tap-highlight-color: transparent;',
+    '}',
+    '.pdm-btn:hover { background: rgba(79,195,247,0.25); border-color: rgba(79,195,247,0.6); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,195,247,0.3); }',
+    '.pdm-btn:active { transform: translateY(0); }',
+    '.pdm-btn-warn { border-color: rgba(246,201,14,0.3); background: rgba(246,201,14,0.1); color: #f6c90e; }',
+    '.pdm-btn-warn:hover { background: rgba(246,201,14,0.25); border-color: rgba(246,201,14,0.6); box-shadow: 0 4px 12px rgba(246,201,14,0.3); }',
+    '.pdm-btn-danger { border-color: rgba(255,71,87,0.3); background: rgba(255,71,87,0.1); color: #ff4757; }',
+    '.pdm-btn-danger:hover { background: rgba(255,71,87,0.25); border-color: rgba(255,71,87,0.6); box-shadow: 0 4px 12px rgba(255,71,87,0.3); }',
+    '.pdm-btn-active { border-color: rgba(79,195,247,0.7) !important; background: rgba(79,195,247,0.25) !important; box-shadow: 0 0 10px rgba(79,195,247,0.3); }'
+  ].join('');
+  document.head.appendChild(_pdmStyle);
+}
+</script>
+
+<script>
+(function () {
+  var uid      = '#uid#';
+  var cmdId    = '#id#';
+  var rawValue = '#value#';
+
+  function parseData(raw) {
+    try { return JSON.parse(raw || '{}'); } catch (e) { return {}; }
+  }
+
+  var _lavageInterval = null;
+  var _lavageData     = {};
+  var _lastActSig     = null;
+
+  function lavageLabel() {
+    var etat = parseInt(_lavageData.lavageEtat) || 0;
+    var ts   = parseInt(_lavageData.lavageTimestamp) || 0;
+    if (etat === 1 || etat === 3 || etat === 5) {
+      return _lavageData.lavageStatus || '';
+    }
+    if ((etat === 2 || etat === 4) && ts > 0) {
+      var restant = ts - Math.floor(Date.now() / 1000);
+      if (restant > 0) {
+        var mm = Math.floor(restant / 60);
+        var ss = restant % 60;
+        var prefix = etat === 2 ? 'Lavage' : 'Rinçage';
+        return prefix + ' : ' + (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+      }
+      return etat === 2 ? 'Arrêt, position rinçage' : 'Arrêt, position filtration';
+    }
+    return _lavageData.lavageStatus || '';
+  }
+
+  function renderLavage() {
+    var wrap = document.getElementById('pdm-lavage-' + uid);
+    if (!wrap) return;
+    var etat = parseInt(_lavageData.lavageEtat) || 0;
+    if (etat > 0) {
+      wrap.innerHTML =
+        '<div class="pdm-lavage">' +
+        '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>' +
+        '<span id="pdm-lavage-lbl-' + uid + '">' + lavageLabel() + '</span>' +
+        '</div>';
+    } else {
+      wrap.innerHTML = '';
+    }
+  }
+
+  function updateLavage(d) {
+    var prevEtat = parseInt(_lavageData.lavageEtat) || 0;
+    var newEtat  = parseInt(d.lavageEtat) || 0;
+    _lavageData = d;
+    if (newEtat !== prevEtat) {
+      if (_lavageInterval) { clearInterval(_lavageInterval); _lavageInterval = null; }
+      renderLavage();
+      if (newEtat === 2 || newEtat === 4) {
+        _lavageInterval = setInterval(function () {
+          var lbl = document.getElementById('pdm-lavage-lbl-' + uid);
+          if (lbl) { lbl.textContent = lavageLabel(); }
+          else { clearInterval(_lavageInterval); _lavageInterval = null; }
+        }, 1000);
+      }
+    }
+  }
+
+  function setStatus(name, state, visible) {
+    var el = document.getElementById('pdm-s-' + name + '-' + uid);
+    if (!el) return;
+    var display = (visible === false) ? 'none' : '';
+    if (el.style.display !== display) el.style.display = display;
+    var cls = 'pdm-status-item ' + state;
+    if (el.className !== cls) el.className = cls;
+  }
+
+  function render(d) {
+    var tempEl = document.getElementById('pdm-temp-' + uid);
+    if (tempEl) {
+      tempEl.textContent = (d.temp !== undefined && d.temp !== null && d.temp !== '')
+        ? parseFloat(d.temp).toFixed(1) : '--';
+    }
+
+    var extEl = document.getElementById('pdm-tempext-' + uid);
+    if (extEl) {
+      var parts = [];
+      if (d.tempOutdoor !== undefined && d.tempOutdoor !== null && d.tempOutdoor !== '') {
+        parts.push(parseFloat(d.tempOutdoor).toFixed(1) + '°C ext.');
+      }
+      if (d.tempMax !== undefined && d.tempMax !== null && d.tempMax !== '' && parseFloat(d.tempMax) > 0) {
+        parts.push('▲ ' + parseFloat(d.tempMax).toFixed(1) + '°C');
+      }
+      extEl.textContent = parts.join('  ·  ');
+    }
+
+    var modeEl = document.getElementById('pdm-mode-' + uid);
+    if (modeEl) {
+      var status = (d.asservissementStatus || '').toLowerCase();
+      var badgeClass, badgeLabel = d.asservissementStatus || '';
+      if (status.indexOf('inactif') !== -1) {
+        badgeClass = 'pdm-badge-arret';
+      } else if (status.indexOf('actif') !== -1 && status.indexOf('hivernage') === -1) {
+        badgeClass = 'pdm-badge-forcee';
+      } else if (status.indexOf('hivernage') !== -1) {
+        badgeClass = 'pdm-badge-hivernage';
+      } else {
+        badgeClass = 'pdm-badge-normal';
+      }
+      if (parseInt(d.filtrationChoc) === 1) { badgeLabel += ' · Choc'; }
+      modeEl.innerHTML = '<span class="pdm-mode-badge ' + badgeClass + '">' + badgeLabel + '</span>';
+    }
+
+    setStatus('filtration',  parseInt(d.filtration)  === 1 ? 'pdm-on'       : 'pdm-off', true);
+    setStatus('chauffage',   parseInt(d.chauffage)   === 1 ? 'pdm-on-heat'  : 'pdm-off', !!d.hasChauffage);
+    setStatus('traitement',  parseInt(d.traitement)  === 1 ? 'pdm-on-green' : 'pdm-off', !!d.hasTraitement);
+    setStatus('surpresseur', parseInt(d.surpresseur) === 1 ? 'pdm-on'       : 'pdm-off', !!d.hasSurpresseur);
+
+    updateLavage(d);
+
+    var ftEl = document.getElementById('pdm-ft-' + uid);
+    if (ftEl) ftEl.textContent = d.filtrationTime || '--:--';
+
+    var ttWrap = document.getElementById('pdm-info-tt-' + uid);
+    var ttEl   = document.getElementById('pdm-tt-' + uid);
+    var hasTT  = d.treatmentTime !== null && d.treatmentTime !== undefined;
+    if (ttWrap) ttWrap.style.display = hasTT ? '' : 'none';
+    if (ttEl && hasTT) ttEl.textContent = d.treatmentTime || '--:--';
+
+    var schedEl = document.getElementById('pdm-sched-' + uid);
+    if (schedEl) schedEl.textContent = d.filtrationSchedule || '';
+
+    buildActions(d);
+  }
+
+  function buildActions(d) {
+    if (!d.actions) return;
+    var acts  = d.actions;
+    var $zone = document.getElementById('pdm-actions-' + uid);
+    if (!$zone) return;
+
+    var chocActif  = parseInt(d.filtrationChoc) === 1;
+    var status     = (d.asservissementStatus || '').toLowerCase();
+    var modeActuel = status.indexOf('inactif') !== -1 ? 'inactif'
+                   : (status.indexOf('actif') !== -1 && status.indexOf('hivernage') === -1) ? 'actif'
+                   : 'auto';
+    var sig = (chocActif ? '1' : '0') + '|' + modeActuel + '|' +
+              (acts.chocFilterOn || '') + '|' + (acts.chocFilterOff || '') + '|' +
+              (acts.surpresseurOn || '') + '|' + (acts.filtreSableLavageOn || '') + '|' +
+              (acts.poolStop || '') + '|' + (acts.resetCalcul || '') + '|' +
+              (acts.asservissementActif || '') + '|' + (acts.asservissementAuto || '') + '|' +
+              (acts.asservissementInactif || '');
+    if (sig === _lastActSig) return;
+    _lastActSig = sig;
+
+    function refreshWidget() {
+      $.ajax({
+        type: 'POST',
+        url: 'core/ajax/cmd.ajax.php',
+        data: { action: 'execCmd', id: cmdId },
+        dataType: 'json',
+        success: function (data) {
+          if (data && data.state === 'ok' && data.result) {
+            render(parseData(data.result));
+          }
+        }
+      });
+    }
+
+    function makeBtn(id, label, css, svgPath) {
+      var b = document.createElement('button');
+      b.className = css;
+      b.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor" style="width:12px;height:12px">' + svgPath + '</svg>' + label;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (typeof jeedom !== 'undefined' && jeedom.cmd && jeedom.cmd.execute) {
+          jeedom.cmd.execute({ id: id });
+          setTimeout(refreshWidget, 1200);
+        }
+      });
+      return b;
+    }
+
+    function makeRow(buttons) {
+      var row = document.createElement('div');
+      row.className = 'pdm-actions-row';
+      buttons.forEach(function (b) { if (b) row.appendChild(b); });
+      return row;
+    }
+
+    function appendByPairs(btns) {
+      var filtered = btns.filter(Boolean);
+      for (var i = 0; i < filtered.length; i += 2) {
+        $zone.appendChild(makeRow(filtered.slice(i, i + 2)));
+      }
+    }
+
+    $zone.innerHTML = '';
+
+    // Boutons action : par paires de 2
+    var actionBtns = [];
+    if (acts.chocFilterOn || acts.chocFilterOff) {
+      var chocId = (chocActif && acts.chocFilterOff) ? acts.chocFilterOff : acts.chocFilterOn;
+      actionBtns.push(makeBtn(chocId,
+        chocActif ? 'Stop choc' : 'Choc',
+        chocActif ? 'pdm-btn pdm-btn-danger' : 'pdm-btn pdm-btn-warn',
+        '<path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>'
+      ));
+    }
+    if (acts.filtreSableLavageOn) {
+      actionBtns.push(makeBtn(acts.filtreSableLavageOn, 'Lavage', 'pdm-btn',
+        '<path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>'
+      ));
+    }
+    if (acts.surpresseurOn) {
+      actionBtns.push(makeBtn(acts.surpresseurOn, 'Robot', 'pdm-btn',
+        '<path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>'
+      ));
+    }
+    if (acts.resetCalcul) {
+      actionBtns.push(makeBtn(acts.resetCalcul, 'Reset', 'pdm-btn',
+        '<path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>'
+      ));
+    }
+    appendByPairs(actionBtns);
+
+    // Modes : par paires de 2
+    var hasMode = acts.asservissementActif || acts.asservissementAuto || acts.asservissementInactif;
+    if (hasMode) {
+      var modeBtns = [];
+      if (acts.asservissementActif) {
+        modeBtns.push(makeBtn(acts.asservissementActif, 'Actif',
+          'pdm-btn' + (modeActuel === 'actif' ? ' pdm-btn-active' : ''),
+          '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>'));
+      }
+      if (acts.asservissementAuto) {
+        modeBtns.push(makeBtn(acts.asservissementAuto, 'Auto',
+          'pdm-btn' + (modeActuel === 'auto' ? ' pdm-btn-active' : ''),
+          '<path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>'));
+      }
+      if (acts.asservissementInactif) {
+        modeBtns.push(makeBtn(acts.asservissementInactif, 'Inactif',
+          'pdm-btn pdm-btn-danger' + (modeActuel === 'inactif' ? ' pdm-btn-active' : ''),
+          '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>'));
+      }
+      appendByPairs(modeBtns);
+    }
+  }
+
+  // Animation vagues — stockée dans window pour survivre aux re-renders DOM
+  if (!window._pdmWaveAnim) {
+    window._pdmWaveAnim  = true;
+    window._pdmWaveStart = Date.now();
+    (function animateWaves() {
+      var elapsed   = (Date.now() - window._pdmWaveStart) / 1000;
+      var offset    = Math.sin((elapsed % 6) / 6 * Math.PI) * 10;
+      var transform = 'translateX(' + offset.toFixed(2) + '%)';
+      var waves = document.querySelectorAll('.pdm-wave');
+      for (var i = 0; i < waves.length; i++) {
+        waves[i].style.transform = transform;
+      }
+      requestAnimationFrame(animateWaves);
+    })();
+  }
+
+  render(parseData(rawValue));
+
+  (function waitForJQuery() {
+    if (typeof $ === 'undefined') { setTimeout(waitForJQuery, 100); return; }
+    $(document)
+      .off(uid + '.update')
+      .on(uid + '.update', '#cmd' + cmdId, function (event, options) {
+        var val = (options && (options.display_value || options.value)) || '';
+        render(parseData(val));
+      });
+  })();
+})();
+</script>
